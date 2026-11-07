@@ -1,6 +1,15 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function WorkspaceLayout({ workspace }) {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
+
   return (
     <div className="workspace-shell">
       <aside className="workspace-sidebar">
@@ -39,6 +48,9 @@ export default function WorkspaceLayout({ workspace }) {
         <Link className="back-link" to="/">
           <span aria-hidden="true">←</span> Back to Academy
         </Link>
+        <button className="workspace-logout" onClick={handleLogout} type="button">
+          Log out
+        </button>
       </aside>
       <main className="workspace-main">
         <Outlet />

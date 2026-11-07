@@ -19,7 +19,9 @@ npm install
 
 Copy `.env.example` to `.env` and update values as needed. The API can start
 without MongoDB configured; it will report the database as `not_configured`.
-Set `MONGODB_URI` to connect to a MongoDB instance.
+Set `MONGO_URI` to connect to a MongoDB instance and provide a random
+`JWT_SECRET` of at least 32 characters. `JWT_EXPIRES_IN` controls token
+expiration (for example, `1d`).
 
 ## Run in development
 
@@ -51,6 +53,14 @@ link back to the Academy or its workspace.
 
 Authentication, matching, messaging, and completed dashboards are not included
 in these placeholders.
+
+## Authentication
+
+The API provides `POST /api/auth/register`, `POST /api/auth/login`, and
+authenticated `GET /api/auth/me`. Public registration always creates a mentee
+account. The client stores the JWT in session storage (never the password),
+restores the current user through `/api/auth/me`, and protects each workspace
+by role. Configure MongoDB and JWT values in `.env` before using authentication.
 
 ## Production build
 

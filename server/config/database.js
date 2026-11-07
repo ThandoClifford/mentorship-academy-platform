@@ -8,7 +8,7 @@ const connectionStates = [
 ];
 
 export function isDatabaseConfigured() {
-  return Boolean(process.env.MONGODB_URI);
+  return Boolean(process.env.MONGO_URI);
 }
 
 export function getDatabaseStatus() {
@@ -22,6 +22,10 @@ export function getDatabaseStatus() {
 }
 
 export async function connectDatabase() {
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGO_URI);
   console.info('Connected to MongoDB.');
+}
+
+export function isDatabaseConnected() {
+  return mongoose.connection.readyState === 1;
 }

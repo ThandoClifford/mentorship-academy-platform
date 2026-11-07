@@ -53,13 +53,12 @@ export const publicRoutes = [
   {
     path: 'login',
     title: 'Log In',
-    description: 'The sign-in experience will be available in a later phase.',
+    description: 'Log in to continue your Mentorship Academy journey.',
   },
   {
     path: 'register',
     title: 'Register',
-    description:
-      'Registration will be available when account features are introduced.',
+    description: 'Create a mentee account and begin your mentorship journey.',
   },
 ];
 
