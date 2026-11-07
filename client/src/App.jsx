@@ -7,6 +7,8 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import HomePage from './pages/public/HomePage.jsx';
 import LoginPage from './pages/public/LoginPage.jsx';
 import RegisterPage from './pages/public/RegisterPage.jsx';
+import MenteeProfilePage from './pages/mentee/ProfilePage.jsx';
+import MentorProfilePage from './pages/mentor/ProfilePage.jsx';
 import { publicRoutes, workspaceRoutes } from './routes.js';
 
 export default function App() {
@@ -62,15 +64,21 @@ export default function App() {
               index={!page.path}
               path={page.path || undefined}
               element={
-                <PagePlaceholder
-                  {...page}
-                  backTo={page.path ? workspace.basePath : '/'}
-                  backLabel={
-                    page.path
-                      ? `Back to ${workspace.role} workspace`
-                      : 'Back to Academy'
-                  }
-                />
+                page.path === 'profile' && workspace.role === 'Mentee' ? (
+                  <MenteeProfilePage />
+                ) : page.path === 'profile' && workspace.role === 'Mentor' ? (
+                  <MentorProfilePage />
+                ) : (
+                  <PagePlaceholder
+                    {...page}
+                    backTo={page.path ? workspace.basePath : '/'}
+                    backLabel={
+                      page.path
+                        ? `Back to ${workspace.role} workspace`
+                        : 'Back to Academy'
+                    }
+                  />
+                )
               }
             />
           ))}

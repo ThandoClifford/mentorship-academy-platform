@@ -62,6 +62,11 @@ account. The client stores the JWT in session storage (never the password),
 restores the current user through `/api/auth/me`, and protects each workspace
 by role. Configure MongoDB and JWT values in `.env` before using authentication.
 
+Mentees and mentors can manage their own profiles through
+`/api/mentee/profile` and `/api/mentor/profile` (`GET` and `PUT`). Each role
+also has a `/profile/completion` endpoint. Profile data is stored separately
+from authentication data and is scoped to the authenticated user.
+
 ## Production build
 
 ```bash

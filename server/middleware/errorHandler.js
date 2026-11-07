@@ -27,7 +27,9 @@ export default function errorHandler(error, _request, response, _next) {
     );
   } else if (error.code === 11000) {
     statusCode = 409;
-    message = 'An account with this email already exists.';
+    message = error.keyPattern?.user
+      ? 'A profile for this account already exists.'
+      : 'An account with this email already exists.';
   } else if (!(error instanceof ApiError) && statusCode >= 500) {
     console.error(error);
     message = 'An unexpected server error occurred.';
