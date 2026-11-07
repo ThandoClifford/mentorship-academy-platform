@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
+import { Link, NavLink, Outlet } from 'react-router-dom';
 
-export default function WorkspaceLayout({ role, children }) {
+export default function WorkspaceLayout({ workspace }) {
   return (
     <div className="workspace-shell">
       <aside className="workspace-sidebar">
@@ -13,14 +13,36 @@ export default function WorkspaceLayout({ role, children }) {
         </Link>
         <div className="workspace-role">
           <span className="workspace-eyebrow">Workspace</span>
-          <strong>{role}</strong>
+          <strong>{workspace.role}</strong>
         </div>
+        <nav className="workspace-nav" aria-label={`${workspace.role} navigation`}>
+          {workspace.pages.map((page) => {
+            const to = page.path
+              ? `${workspace.basePath}/${page.path}`
+              : workspace.basePath;
+
+            return (
+              <NavLink
+                key={page.path || 'index'}
+                to={to}
+                end={!page.path}
+                className={({ isActive }) =>
+                  `workspace-nav-link${isActive ? ' active' : ''}`
+                }
+              >
+                {page.navLabel || page.title}
+              </NavLink>
+            );
+          })}
+        </nav>
+        <p className="sidebar-note">{workspace.description}</p>
         <Link className="back-link" to="/">
           <span aria-hidden="true">←</span> Back to Academy
         </Link>
-        <p className="sidebar-note">Your mentorship journey starts here.</p>
       </aside>
-      <main className="workspace-main">{children}</main>
+      <main className="workspace-main">
+        <Outlet />
+      </main>
     </div>
   );
 }

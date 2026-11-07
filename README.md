@@ -41,6 +41,17 @@ The client runs at <http://localhost:5173>, the API at
 <http://localhost:5000/api/health>. Vite proxies client `/api` requests to the
 API during development.
 
+## Frontend routes
+
+The client uses React Router with a public layout and separate mentee, mentor,
+and admin workspace layouts. Route titles, descriptions, and workspace
+navigation are defined in `client/src/routes.js`. Every route currently renders
+a shared placeholder that shows its title, description, current path, and a
+link back to the Academy or its workspace.
+
+Authentication, matching, messaging, and completed dashboards are not included
+in these placeholders.
+
 ## Production build
 
 ```bash
