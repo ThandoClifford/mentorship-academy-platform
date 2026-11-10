@@ -80,6 +80,34 @@ export const workspaceRoutes = [
         description: 'Your personal details and mentorship interests will live here.',
       },
       {
+        path: 'mentorship/request',
+        navLabel: 'Find a Mentor',
+        title: 'Find a Mentor',
+        description: 'Browse approved mentors and request mentorship.',
+      },
+      {
+        path: 'mentorship/request/:id',
+        title: 'Request Mentorship',
+        description: 'Send a mentorship request to a specific mentor.',
+      },
+      {
+        path: 'mentorship/requests',
+        navLabel: 'My Requests',
+        title: 'My Requests',
+        description: 'Track the status of your mentorship requests.',
+      },
+      {
+        path: 'mentorship/relationships',
+        navLabel: 'My Relationships',
+        title: 'My Relationships',
+        description: 'View and manage your mentorship relationships.',
+      },
+      {
+        path: 'mentorship/relationships/:id',
+        title: 'Relationship Details',
+        description: 'View details of a specific mentorship relationship.',
+      },
+      {
         path: 'match',
         title: 'Find a Match',
         description: 'Your mentor matching experience will be available in a later phase.',
@@ -146,6 +174,23 @@ export const workspaceRoutes = [
         path: 'application',
         title: 'Mentor Application',
         description: 'Your mentor application experience will be available in a later phase.',
+      },
+      {
+        path: 'mentorship/requests',
+        navLabel: 'Incoming Requests',
+        title: 'Incoming Requests',
+        description: 'Review and respond to mentorship requests from mentees.',
+      },
+      {
+        path: 'mentorship/relationships',
+        navLabel: 'My Relationships',
+        title: 'My Relationships',
+        description: 'View and manage your mentorship relationships with mentees.',
+      },
+      {
+        path: 'mentorship/relationships/:id',
+        title: 'Relationship Details',
+        description: 'View details of a specific mentorship relationship.',
       },
       {
         path: 'matches',

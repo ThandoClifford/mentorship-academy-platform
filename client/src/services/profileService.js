@@ -15,6 +15,11 @@ async function getCompletion(path) {
   return response.data;
 }
 
+async function getData(path) {
+  const response = await api.get(path);
+  return response.data;
+}
+
 export function getMenteeProfile() {
   return getProfile('/mentee/profile');
 }
@@ -37,4 +42,8 @@ export function updateMentorProfile(profile) {
 
 export function getMentorProfileCompletion() {
   return getCompletion('/mentor/profile/completion');
+}
+
+export function getApprovedMentors() {
+  return getData('/mentors/approved');
 }
