@@ -17,6 +17,11 @@ import MenteeRelationshipDetailPage from './pages/mentee/mentorship/Relationship
 import MentorIncomingRequestsPage from './pages/mentor/mentorship/IncomingRequestsPage.jsx';
 import MentorMyRelationshipsPage from './pages/mentor/mentorship/MyRelationshipsPage.jsx';
 import MentorRelationshipDetailPage from './pages/mentor/mentorship/RelationshipDetailPage.jsx';
+import MenteeGoalsPage from './pages/mentee/goals/MenteeGoalsPage.jsx';
+import MenteeGoalDetailPage from './pages/mentee/goals/MenteeGoalDetailPage.jsx';
+import MenteeProgressPage from './pages/mentee/goals/MenteeProgressPage.jsx';
+import MentorGoalsPage from './pages/mentor/goals/MentorGoalsPage.jsx';
+import MentorGoalDetailPage from './pages/mentor/goals/MentorGoalDetailPage.jsx';
 import { publicRoutes, workspaceRoutes } from './routes.js';
 
 export default function App() {
@@ -86,12 +91,22 @@ export default function App() {
                   <MenteeMyRelationshipsPage />
                 ) : page.path === 'mentorship/relationships/:id' && workspace.role === 'Mentee' ? (
                   <MenteeRelationshipDetailPage />
+                ) : page.path === 'goals' && workspace.role === 'Mentee' ? (
+                  <MenteeGoalsPage />
+                ) : page.path === 'goals/:relationshipId/:goalId' && workspace.role === 'Mentee' ? (
+                  <MenteeGoalDetailPage />
+                ) : page.path === 'progress' && workspace.role === 'Mentee' ? (
+                  <MenteeProgressPage />
                 ) : page.path === 'mentorship/requests' && workspace.role === 'Mentor' ? (
                   <MentorIncomingRequestsPage />
                 ) : page.path === 'mentorship/relationships' && workspace.role === 'Mentor' ? (
                   <MentorMyRelationshipsPage />
                 ) : page.path === 'mentorship/relationships/:id' && workspace.role === 'Mentor' ? (
                   <MentorRelationshipDetailPage />
+                ) : page.path === 'goals' && workspace.role === 'Mentor' ? (
+                  <MentorGoalsPage />
+                ) : page.path === 'goals/:relationshipId/:goalId' && workspace.role === 'Mentor' ? (
+                  <MentorGoalDetailPage />
                 ) : (
                   <PagePlaceholder
                     {...page}

@@ -119,8 +119,14 @@ export const workspaceRoutes = [
       },
       {
         path: 'goals',
+        navLabel: 'My Goals',
         title: 'My Goals',
         description: 'Set and revisit the goals that guide your mentorship journey.',
+      },
+      {
+        path: 'goals/:relationshipId/:goalId',
+        title: 'Goal Details',
+        description: 'View and manage a specific goal.',
       },
       {
         path: 'journey',
@@ -134,6 +140,7 @@ export const workspaceRoutes = [
       },
       {
         path: 'progress',
+        navLabel: 'My Progress',
         title: 'My Progress',
         description: 'Reflect on your growth and progress over time.',
       },
@@ -204,8 +211,14 @@ export const workspaceRoutes = [
       },
       {
         path: 'goals',
+        navLabel: 'Goals',
         title: 'Goals',
         description: 'Review and support goals across your mentorship relationships.',
+      },
+      {
+        path: 'goals/:relationshipId/:goalId',
+        title: 'Goal Details',
+        description: 'View a mentee goal and add feedback.',
       },
       {
         path: 'messages',
