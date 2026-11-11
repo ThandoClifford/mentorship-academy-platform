@@ -14,6 +14,7 @@ import MenteeRequestMentorDetailPage from './pages/mentee/mentorship/RequestMent
 import MenteeMyRequestsPage from './pages/mentee/mentorship/MyRequestsPage.jsx';
 import MenteeMyRelationshipsPage from './pages/mentee/mentorship/MyRelationshipsPage.jsx';
 import MenteeRelationshipDetailPage from './pages/mentee/mentorship/RelationshipDetailPage.jsx';
+import MenteeMatchPage from './pages/mentee/match/MenteeMatchPage.jsx';
 import MentorIncomingRequestsPage from './pages/mentor/mentorship/IncomingRequestsPage.jsx';
 import MentorMyRelationshipsPage from './pages/mentor/mentorship/MyRelationshipsPage.jsx';
 import MentorRelationshipDetailPage from './pages/mentor/mentorship/RelationshipDetailPage.jsx';
@@ -97,6 +98,8 @@ export default function App() {
                   <MenteeGoalDetailPage />
                 ) : page.path === 'progress' && workspace.role === 'Mentee' ? (
                   <MenteeProgressPage />
+                ) : page.path === 'match' && workspace.role === 'Mentee' ? (
+                  <MenteeMatchPage />
                 ) : page.path === 'mentorship/requests' && workspace.role === 'Mentor' ? (
                   <MentorIncomingRequestsPage />
                 ) : page.path === 'mentorship/relationships' && workspace.role === 'Mentor' ? (

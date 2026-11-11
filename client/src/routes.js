@@ -109,8 +109,9 @@ export const workspaceRoutes = [
       },
       {
         path: 'match',
+        navLabel: 'Find a Match',
         title: 'Find a Match',
-        description: 'Your mentor matching experience will be available in a later phase.',
+        description: 'Discover your best mentor matches using AI-powered compatibility scoring.',
       },
       {
         path: 'mentor',
