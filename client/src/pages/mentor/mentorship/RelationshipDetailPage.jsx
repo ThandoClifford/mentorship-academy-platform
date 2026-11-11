@@ -38,7 +38,7 @@ export default function MentorRelationshipDetailPage() {
 
     async function loadRelationship() {
       try {
-        const data = await mentorshipService.getMentorshipRelationship(id);
+        const data = await mentorshipService.getMentorMentorshipRelationship(id);
         if (active) setRelationship(data.relationship);
       } catch (err) {
         if (active) {
@@ -67,7 +67,7 @@ export default function MentorRelationshipDetailPage() {
     try {
       await mentorshipService.activateMentorshipRelationship(id);
       setSuccess('Relationship activated.');
-      const data = await mentorshipService.getMentorshipRelationship(id);
+      const data = await mentorshipService.getMentorMentorshipRelationship(id);
       setRelationship(data.relationship);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not activate relationship.');
@@ -84,7 +84,7 @@ export default function MentorRelationshipDetailPage() {
     try {
       await mentorshipService.mentorCompleteMentorshipRelationship(id);
       setSuccess('Relationship marked as completed.');
-      const data = await mentorshipService.getMentorshipRelationship(id);
+      const data = await mentorshipService.getMentorMentorshipRelationship(id);
       setRelationship(data.relationship);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not complete relationship.');
@@ -101,7 +101,7 @@ export default function MentorRelationshipDetailPage() {
     try {
       await mentorshipService.mentorArchiveMentorshipRelationship(id);
       setSuccess('Relationship archived.');
-      const data = await mentorshipService.getMentorshipRelationship(id);
+      const data = await mentorshipService.getMentorMentorshipRelationship(id);
       setRelationship(data.relationship);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not archive relationship.');
@@ -150,6 +150,7 @@ export default function MentorRelationshipDetailPage() {
   const canActivate = status === 'ACCEPTED' && isMentor;
   const canComplete = status === 'ACTIVE' && isMentor;
   const canArchive = status === 'COMPLETED' && isMentor;
+  const canMessage = ['ACCEPTED', 'ACTIVE', 'COMPLETED'].includes(status) && isMentor;
 
   return (
     <section className="mentorship-page">
@@ -255,6 +256,11 @@ export default function MentorRelationshipDetailPage() {
           )}
 
           <div className="relationship-actions">
+            {canMessage && (
+              <Link className="button button-primary" to={`/mentor/mentorship/relationships/${relationship.id}/messages`}>
+                Open Messages
+              </Link>
+            )}
             {canActivate && (
               <button
                 className="button button-primary"
@@ -262,7 +268,7 @@ export default function MentorRelationshipDetailPage() {
                 onClick={handleActivate}
                 disabled={activating || completing || archiving}
               >
-                {activating ? 'Activating…' : 'Activate Relationship'}
+                {activating ? 'Activatingâ€¦' : 'Activate Relationship'}
               </button>
             )}
             {canComplete && (
@@ -272,7 +278,7 @@ export default function MentorRelationshipDetailPage() {
                 onClick={handleComplete}
                 disabled={activating || completing || archiving}
               >
-                {completing ? 'Completing…' : 'Complete Relationship'}
+                {completing ? 'Completingâ€¦' : 'Complete Relationship'}
               </button>
             )}
             {canArchive && (
@@ -282,7 +288,7 @@ export default function MentorRelationshipDetailPage() {
                 onClick={handleArchive}
                 disabled={activating || completing || archiving}
               >
-                {archiving ? 'Archiving…' : 'Archive Relationship'}
+                {archiving ? 'Archivingâ€¦' : 'Archive Relationship'}
               </button>
             )}
           </div>

@@ -131,6 +131,7 @@ export default function MenteeRelationshipDetailPage() {
   const isMentee = relationship.mentee?.id === String(user?._id);
   const canComplete = status === 'ACTIVE' && isMentee;
   const canArchive = status === 'COMPLETED' && isMentee;
+  const canMessage = ['ACCEPTED', 'ACTIVE', 'COMPLETED'].includes(status) && isMentee;
 
   return (
     <section className="mentorship-page">
@@ -234,6 +235,11 @@ export default function MenteeRelationshipDetailPage() {
           )}
 
           <div className="relationship-actions">
+            {canMessage && (
+              <Link className="button button-primary" to={`/mentee/mentorship/relationships/${relationship.id}/messages`}>
+                Open Messages
+              </Link>
+            )}
             {canComplete && (
               <button
                 className="button button-secondary"
@@ -241,7 +247,7 @@ export default function MenteeRelationshipDetailPage() {
                 onClick={handleComplete}
                 disabled={completing || archiving}
               >
-                {completing ? 'Completing…' : 'Complete Relationship'}
+                {completing ? 'Completingâ€¦' : 'Complete Relationship'}
               </button>
             )}
             {canArchive && (
@@ -251,7 +257,7 @@ export default function MenteeRelationshipDetailPage() {
                 onClick={handleArchive}
                 disabled={completing || archiving}
               >
-                {archiving ? 'Archiving…' : 'Archive Relationship'}
+                {archiving ? 'Archivingâ€¦' : 'Archive Relationship'}
               </button>
             )}
           </div>

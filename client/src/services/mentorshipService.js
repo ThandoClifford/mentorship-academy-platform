@@ -33,6 +33,11 @@ export async function getMentorMentorshipRelationships() {
 }
 
 export async function getMentorshipRelationship(id) {
+  const response = await api.get(`/mentee/mentorship/${id}`);
+  return getData(response);
+}
+
+export async function getMentorMentorshipRelationship(id) {
   const response = await api.get(`/mentor/mentorship/${id}`);
   return getData(response);
 }

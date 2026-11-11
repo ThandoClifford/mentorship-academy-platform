@@ -135,9 +135,9 @@ export const workspaceRoutes = [
         description: 'Follow the key moments in your mentorship journey.',
       },
       {
-        path: 'messages',
+        path: 'mentorship/relationships/:id/messages',
         title: 'Messages',
-        description: 'Mentorship conversations will be available in a later phase.',
+        description: 'View and send messages with your mentor for this relationship.',
       },
       {
         path: 'progress',
@@ -222,9 +222,9 @@ export const workspaceRoutes = [
         description: 'View a mentee goal and add feedback.',
       },
       {
-        path: 'messages',
+        path: 'mentorship/relationships/:id/messages',
         title: 'Messages',
-        description: 'Mentorship conversations will be available in a later phase.',
+        description: 'View and send messages with your mentee for this relationship.',
       },
       {
         path: 'resources',
