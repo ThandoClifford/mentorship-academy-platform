@@ -2,6 +2,7 @@
 import MentorshipRelationship from '../models/MentorshipRelationship.js';
 import Message from '../models/Message.js';
 import ApiError from '../utils/ApiError.js';
+import { createNotification } from './notificationService.js';
 
 const MESSAGEABLE_STATUSES = ['ACCEPTED', 'ACTIVE', 'COMPLETED'];
 
@@ -68,7 +69,7 @@ export async function listMessages(userId, relationshipId) {
 }
 
 export async function createMessage(userId, relationshipId, payload) {
-  await getAuthorizedRelationship(userId, relationshipId, { forWrite: true });
+  const relationship = await getAuthorizedRelationship(userId, relationshipId, { forWrite: true });
 
   const content = typeof payload?.content === 'string' ? payload.content.trim() : '';
   if (!content) {
@@ -89,5 +90,25 @@ export async function createMessage(userId, relationshipId, payload) {
   });
 
   await message.populate('sender', 'firstName lastName email role');
+
+  const senderId = String(userId);
+  const menteeId = String(relationship.mentee);
+  const mentorId = String(relationship.mentor);
+  const recipientId = senderId === menteeId ? mentorId : menteeId;
+  if (recipientId && recipientId !== senderId) {
+    const senderName = message.sender
+      ? `${message.sender.firstName || ''} ${message.sender.lastName || ''}`.trim() || 'A participant'
+      : 'A participant';
+    const preview = content.length > 120 ? `${content.slice(0, 117)}...` : content;
+    await createNotification({
+      recipient: recipientId,
+      type: 'NEW_MESSAGE',
+      title: 'New message',
+      message: `${senderName}: ${preview}`,
+      relatedEntityType: 'MESSAGE',
+      relatedEntityId: relationshipId,
+    });
+  }
+
   return toSafeMessage(message);
 }

@@ -9,6 +9,7 @@ import Goal, {
   MILESTONE_STATUSES,
 } from '../models/Goal.js';
 import ApiError from '../utils/ApiError.js';
+import { createNotification } from './notificationService.js';
 
 function toSafeUser(user) {
   return {
@@ -258,8 +259,24 @@ export async function updateGoal(menteeId, relationshipId, goalId, payload) {
     }
   }
 
+  const statusChanged = 'status' in payload;
   await goal.save();
   await goal.populate('mentee', 'firstName lastName email role');
+
+  if (statusChanged) {
+    const rel = await MentorshipRelationship.findById(goal.mentorshipRelationship).select('mentor').lean();
+    if (rel?.mentor) {
+      await createNotification({
+        recipient: rel.mentor,
+        type: 'GOAL_MILESTONE_UPDATED',
+        title: 'Goal updated',
+        message: `Goal "${goal.title}" status changed to ${goal.status}.`,
+        relatedEntityType: 'GOAL',
+        relatedEntityId: goal._id,
+      });
+    }
+  }
+
   return toSafeGoal(goal);
 }
 
@@ -382,9 +399,25 @@ export async function updateMilestone(menteeId, relationshipId, goalId, mileston
     }
   }
 
+  const milestoneStatusChanged = 'status' in payload;
   goal.calculateProgress();
   await goal.save();
   await goal.populate('mentee', 'firstName lastName email role');
+
+  if (milestoneStatusChanged) {
+    const rel = await MentorshipRelationship.findById(goal.mentorshipRelationship).select('mentor').lean();
+    if (rel?.mentor) {
+      await createNotification({
+        recipient: rel.mentor,
+        type: 'GOAL_MILESTONE_UPDATED',
+        title: 'Milestone updated',
+        message: `Milestone "${milestone.title}" in goal "${goal.title}" is now ${milestone.status.replace('_', ' ').toLowerCase()}.`,
+        relatedEntityType: 'GOAL',
+        relatedEntityId: goal._id,
+      });
+    }
+  }
+
   return toSafeGoal(goal);
 }
 
@@ -423,6 +456,16 @@ export async function addMentorFeedback(mentorId, relationshipId, goalId, feedba
   goal.mentorFeedbackAt = new Date();
   await goal.save();
   await goal.populate('mentee', 'firstName lastName email role');
+
+  await createNotification({
+    recipient: goal.mentee?._id || goal.mentee,
+    type: 'GOAL_FEEDBACK',
+    title: 'Goal feedback received',
+    message: `Your mentor left feedback on goal "${goal.title}".`,
+    relatedEntityType: 'GOAL',
+    relatedEntityId: goal._id,
+  });
+
   return toSafeGoal(goal);
 }
 

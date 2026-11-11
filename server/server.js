@@ -15,6 +15,7 @@ import mentorGoalRoutes from './routes/mentorGoalRoutes.js';
 import menteeMatchingRoutes from './routes/menteeMatchingRoutes.js';
 import menteeMessageRoutes from './routes/menteeMessageRoutes.js';
 import mentorMessageRoutes from './routes/mentorMessageRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
@@ -34,6 +35,7 @@ app.use('/api/mentee/mentorship/:relationshipId/messages', menteeMessageRoutes);
 app.use('/api/mentor/mentorship/:relationshipId/messages', mentorMessageRoutes);
 app.use('/api/mentee', menteeMatchingRoutes);
 app.use('/api/mentors', mentorPublicRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use((request, response) => {
   response.status(404).json({ message: 'Route not found.' });
 });

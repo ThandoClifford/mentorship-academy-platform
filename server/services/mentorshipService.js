@@ -5,6 +5,7 @@ import MentorshipRelationship, {
   MENTORSHIP_STATUS_TRANSITIONS,
 } from '../models/MentorshipRelationship.js';
 import ApiError from '../utils/ApiError.js';
+import { createNotification, createNotificationsForRecipients } from './notificationService.js';
 
 function toSafeUser(user) {
   return {
@@ -225,6 +226,16 @@ export async function acceptMentorshipRequest(mentorId, relationshipId) {
     { path: 'requestedBy', select: 'firstName lastName email role' },
   ]);
 
+  const mentorName = `${relationship.mentor?.firstName || ''} ${relationship.mentor?.lastName || ''}`.trim() || 'Your mentor';
+  await createNotification({
+    recipient: relationship.mentee._id,
+    type: 'MENTORSHIP_ACCEPTED',
+    title: 'Mentorship request accepted',
+    message: `${mentorName} accepted your mentorship request.`,
+    relatedEntityType: 'MENTORSHIP',
+    relatedEntityId: relationship._id,
+  });
+
   return toSafeRelationship(relationship);
 }
 
@@ -258,6 +269,16 @@ export async function declineMentorshipRequest(mentorId, relationshipId) {
     { path: 'requestedBy', select: 'firstName lastName email role' },
   ]);
 
+  const mentorName = `${relationship.mentor?.firstName || ''} ${relationship.mentor?.lastName || ''}`.trim() || 'Your mentor';
+  await createNotification({
+    recipient: relationship.mentee._id,
+    type: 'MENTORSHIP_DECLINED',
+    title: 'Mentorship request declined',
+    message: `${mentorName} declined your mentorship request.`,
+    relatedEntityType: 'MENTORSHIP',
+    relatedEntityId: relationship._id,
+  });
+
   return toSafeRelationship(relationship);
 }
 
@@ -290,6 +311,16 @@ export async function activateMentorship(mentorId, relationshipId) {
     { path: 'mentor', select: 'firstName lastName email role' },
     { path: 'requestedBy', select: 'firstName lastName email role' },
   ]);
+
+  const mentorName = `${relationship.mentor?.firstName || ''} ${relationship.mentor?.lastName || ''}`.trim() || 'Your mentor';
+  await createNotification({
+    recipient: relationship.mentee._id,
+    type: 'MENTORSHIP_ACTIVATED',
+    title: 'Mentorship activated',
+    message: `${mentorName} activated your mentorship relationship.`,
+    relatedEntityType: 'MENTORSHIP',
+    relatedEntityId: relationship._id,
+  });
 
   return toSafeRelationship(relationship);
 }
@@ -325,6 +356,17 @@ export async function completeMentorship(userId, relationshipId) {
     { path: 'mentor', select: 'firstName lastName email role' },
     { path: 'requestedBy', select: 'firstName lastName email role' },
   ]);
+
+  await createNotificationsForRecipients(
+    [relationship.mentee._id, relationship.mentor._id],
+    {
+      type: 'MENTORSHIP_COMPLETED',
+      title: 'Mentorship completed',
+      message: 'Your mentorship relationship has been marked as completed.',
+      relatedEntityType: 'MENTORSHIP',
+      relatedEntityId: relationship._id,
+    },
+  );
 
   return toSafeRelationship(relationship);
 }

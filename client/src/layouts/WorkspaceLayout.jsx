@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import NotificationBell from '../components/NotificationBell.jsx';
 
 export default function WorkspaceLayout({ workspace }) {
   const { logout } = useAuth();
@@ -53,6 +54,10 @@ export default function WorkspaceLayout({ workspace }) {
         </button>
       </aside>
       <main className="workspace-main">
+        <header className="workspace-topbar">
+          <div className="workspace-topbar-spacer" />
+          <NotificationBell basePath={workspace.basePath} />
+        </header>
         <Outlet />
       </main>
     </div>
