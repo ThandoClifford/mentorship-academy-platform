@@ -203,27 +203,50 @@ export async function submitApplication(userId, data) {
     });
   }
 
-  const application = await MentorApplication.create({
-    user: userId,
-    status: 'PENDING',
-    professionalBackground: data.professionalBackground.trim(),
-    jobTitle: data.jobTitle.trim(),
-    company: data.company.trim(),
-    industry: data.industry.trim(),
-    yearsOfExperience:
-      data.yearsOfExperience === null || data.yearsOfExperience === undefined
-        ? null
-        : Number(data.yearsOfExperience),
-    expertise: Array.isArray(data.expertise) ? data.expertise : [],
-    skills: Array.isArray(data.skills) ? data.skills : [],
-    specialisations: Array.isArray(data.specialisations) ? data.specialisations : [],
-    experienceAreas: Array.isArray(data.experienceAreas) ? data.experienceAreas : [],
-    mentorshipAreas: Array.isArray(data.mentorshipAreas) ? data.mentorshipAreas : [],
-    mentorshipStyle: data.mentorshipStyle || '',
-    languages: Array.isArray(data.languages) ? data.languages : [],
-    availability: data.availability || {},
-    motivation: data.motivation.trim(),
-  });
+  let application;
+  try {
+    application = await MentorApplication.create({
+      user: userId,
+      status: 'PENDING',
+      professionalBackground: data.professionalBackground.trim(),
+      jobTitle: data.jobTitle.trim(),
+      company: data.company.trim(),
+      industry: data.industry.trim(),
+      yearsOfExperience:
+        data.yearsOfExperience === null || data.yearsOfExperience === undefined
+          ? null
+          : Number(data.yearsOfExperience),
+      expertise: Array.isArray(data.expertise) ? data.expertise : [],
+      skills: Array.isArray(data.skills) ? data.skills : [],
+      specialisations: Array.isArray(data.specialisations) ? data.specialisations : [],
+      experienceAreas: Array.isArray(data.experienceAreas) ? data.experienceAreas : [],
+      mentorshipAreas: Array.isArray(data.mentorshipAreas) ? data.mentorshipAreas : [],
+      mentorshipStyle: data.mentorshipStyle || '',
+      languages: Array.isArray(data.languages) ? data.languages : [],
+      availability: data.availability || {},
+      motivation: data.motivation.trim(),
+    });
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+
+    const conflictingApplication = await MentorApplication.findOne({
+      user: userId,
+      status: { $in: ['PENDING', 'APPROVED'] },
+    });
+    if (!conflictingApplication) {
+      throw new ApiError(409, 'A conflicting mentor application already exists.');
+    }
+
+    if (conflictingApplication.status === 'APPROVED') {
+      throw new ApiError(409, 'You already have an approved mentor application.', {
+        status: 'An approved application already exists for your account.',
+      });
+    }
+
+    throw new ApiError(409, 'You already have a pending mentor application.', {
+      status: 'A pending application already exists for your account.',
+    });
+  }
 
   await logAdminAction({
     actor: userId,

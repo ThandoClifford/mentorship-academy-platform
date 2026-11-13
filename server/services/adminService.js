@@ -441,12 +441,14 @@ async function updateApplicationReviewStatus(
   action,
   notification,
   adminNotes,
+  allowedStatuses = ['PENDING'],
+  invalidStatusMessage = 'Only pending applications can be reviewed.',
 ) {
   requireValidObjectId(applicationId, 'application ID');
   const application = await MentorApplication.findById(applicationId);
   if (!application) throw new ApiError(404, 'Mentor application not found.');
-  if (application.status !== 'PENDING') {
-    throw new ApiError(400, 'Only pending applications can be reviewed.');
+  if (!allowedStatuses.includes(application.status)) {
+    throw new ApiError(400, invalidStatusMessage);
   }
 
   application.status = newStatus;
@@ -564,6 +566,31 @@ export async function rejectMentorApplication(actorId, applicationId, adminNotes
 }
 
 export async function suspendMentorApplication(actorId, applicationId) {
+  requireValidObjectId(applicationId, 'application ID');
+  const application = await MentorApplication.findById(applicationId);
+  if (!application) throw new ApiError(404, 'Mentor application not found.');
+  if (!['PENDING', 'APPROVED'].includes(application.status)) {
+    throw new ApiError(400, 'Only pending or approved mentor applications can be suspended.');
+  }
+
+  const mentorProfile = await MentorProfile.findOne({ user: application.user })
+    .select('_id')
+    .lean();
+  if (application.status === 'APPROVED' && !mentorProfile) {
+    throw new ApiError(409, 'The approved mentor profile could not be found.');
+  }
+
+  if (mentorProfile) {
+    const updatedProfile = await MentorProfile.findOneAndUpdate(
+      { user: application.user },
+      { $set: { status: 'SUSPENDED' } },
+      { new: true, runValidators: true },
+    );
+    if (!updatedProfile) {
+      throw new ApiError(409, 'The mentor profile could not be suspended.');
+    }
+  }
+
   const result = await updateApplicationReviewStatus(
     actorId,
     applicationId,
@@ -575,11 +602,8 @@ export async function suspendMentorApplication(actorId, applicationId) {
       message: 'Your mentor profile has been suspended. Contact the academy for more information.',
     },
     '',
-  );
-
-  await MentorProfile.findOneAndUpdate(
-    { user: result.user?.id },
-    { $set: { status: 'SUSPENDED' } },
+    ['PENDING', 'APPROVED'],
+    'Only pending or approved mentor applications can be suspended.',
   );
 
   return result;

@@ -57,6 +57,12 @@ function validateUserRole(user, expectedRole, action) {
 }
 
 export async function createMentorshipRequest(menteeId, mentorId, requestMessage) {
+  const statusMessages = {
+    PENDING: 'You already have a pending request with this mentor.',
+    ACCEPTED: 'You already have an accepted request with this mentor.',
+    ACTIVE: 'You already have an active mentorship with this mentor.',
+  };
+
   if (!mongoose.isValidObjectId(menteeId) || !mongoose.isValidObjectId(mentorId)) {
     throw new ApiError(400, 'Invalid user ID provided.');
   }
@@ -86,22 +92,36 @@ export async function createMentorshipRequest(menteeId, mentorId, requestMessage
   });
 
   if (existingPending) {
-    const statusMessages = {
-      PENDING: 'You already have a pending request with this mentor.',
-      ACCEPTED: 'You already have an accepted request with this mentor.',
-      ACTIVE: 'You already have an active mentorship with this mentor.',
-    };
     throw new ApiError(409, statusMessages[existingPending.status] || 'A relationship already exists.');
   }
 
-  const relationship = await MentorshipRelationship.create({
-    mentee: menteeId,
-    mentor: mentorId,
-    requestedBy: menteeId,
-    requestMessage: requestMessage?.trim() || '',
-    status: 'PENDING',
-    requestedAt: new Date(),
-  });
+  let relationship;
+  try {
+    relationship = await MentorshipRelationship.create({
+      mentee: menteeId,
+      mentor: mentorId,
+      requestedBy: menteeId,
+      requestMessage: requestMessage?.trim() || '',
+      status: 'PENDING',
+      requestedAt: new Date(),
+    });
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+
+    const conflictingRelationship = await MentorshipRelationship.findOne({
+      mentee: menteeId,
+      mentor: mentorId,
+      status: { $in: ['PENDING', 'ACCEPTED', 'ACTIVE'] },
+    });
+    if (!conflictingRelationship) {
+      throw new ApiError(409, 'A conflicting mentorship relationship already exists.');
+    }
+
+    throw new ApiError(
+      409,
+      statusMessages[conflictingRelationship.status] || 'A relationship already exists.',
+    );
+  }
 
   await relationship.populate([
     { path: 'mentee', select: 'firstName lastName email role' },

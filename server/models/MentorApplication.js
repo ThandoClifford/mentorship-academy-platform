@@ -97,7 +97,16 @@ const mentorApplicationSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-mentorApplicationSchema.index({ user: 1, status: 1 });
+mentorApplicationSchema.index(
+  { user: 1 },
+  {
+    name: 'unique_active_mentor_application',
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ['PENDING', 'APPROVED'] },
+    },
+  },
+);
 mentorApplicationSchema.index({ status: 1, createdAt: -1 });
 
 const MentorApplication = mongoose.model(

@@ -71,7 +71,16 @@ const mentorshipRelationshipSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-mentorshipRelationshipSchema.index({ mentee: 1, mentor: 1, status: 1 });
+mentorshipRelationshipSchema.index(
+  { mentee: 1, mentor: 1 },
+  {
+    name: 'unique_live_mentorship_pair',
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ['PENDING', 'ACCEPTED', 'ACTIVE'] },
+    },
+  },
+);
 mentorshipRelationshipSchema.index({ mentee: 1, status: 1 });
 mentorshipRelationshipSchema.index({ mentor: 1, status: 1 });
 mentorshipRelationshipSchema.index({ requestedBy: 1, status: 1 });
