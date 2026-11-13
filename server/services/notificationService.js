@@ -1,5 +1,6 @@
 ﻿import mongoose from 'mongoose';
 import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 
 function toSafeNotification(notification) {
@@ -102,4 +103,88 @@ export async function markAllNotificationsAsRead(userId) {
     { $set: { isRead: true } },
   );
   return { modifiedCount: result.modifiedCount || 0 };
+}
+
+export async function broadcastNotification({
+  target,
+  recipients = [],
+  title,
+  message,
+  type = 'ADMIN_ANNOUNCEMENT',
+}) {
+  if (!title || !String(title).trim()) {
+    throw new ApiError(400, 'Notification title is required.');
+  }
+  if (!message || !String(message).trim()) {
+    throw new ApiError(400, 'Notification message is required.');
+  }
+
+  if (typeof target !== 'string') {
+    throw new ApiError(400, 'A notification broadcast target is required.');
+  }
+
+  const normalizedTarget = target.trim().toUpperCase();
+  const supportedTargets = new Set([
+    'ALL',
+    'MENTEES',
+    'MENTORS',
+    'USERS',
+    'ALL_USERS',
+    'ALL_MENTEES',
+    'ALL_MENTORS',
+    'SELECTED_USERS',
+  ]);
+  if (!supportedTargets.has(normalizedTarget)) {
+    throw new ApiError(400, 'Notification broadcast target is invalid.', {
+      target: 'Choose ALL, MENTEES, MENTORS, or USERS with selected user IDs.',
+    });
+  }
+
+  let recipientIds = [];
+
+  if (['USERS', 'SELECTED_USERS'].includes(normalizedTarget)) {
+    if (!Array.isArray(recipients) || recipients.length === 0) {
+      throw new ApiError(400, 'At least one selected user is required.', {
+        recipients: 'Provide a non-empty array of user IDs.',
+      });
+    }
+    if (recipients.some((recipient) => !mongoose.isObjectIdOrHexString(recipient))) {
+      throw new ApiError(400, 'Selected user IDs must all be valid ObjectIds.', {
+        recipients: 'Remove invalid user IDs and try again.',
+      });
+    }
+    recipientIds = Array.from(new Set(recipients.map(String)));
+    const existingUsers = await User.countDocuments({ _id: { $in: recipientIds } });
+    if (existingUsers !== recipientIds.length) {
+      throw new ApiError(400, 'One or more selected users do not exist.', {
+        recipients: 'Provide IDs for existing users only.',
+      });
+    }
+  } else if (['MENTEES', 'ALL_MENTEES'].includes(normalizedTarget)) {
+    const users = await User.find({ role: 'MENTEE' }, '_id').lean();
+    recipientIds = users.map((user) => String(user._id));
+  } else if (['MENTORS', 'ALL_MENTORS'].includes(normalizedTarget)) {
+    const users = await User.find({ role: 'MENTOR' }, '_id').lean();
+    recipientIds = users.map((user) => String(user._id));
+  } else if (['ALL', 'ALL_USERS'].includes(normalizedTarget)) {
+    const users = await User.find({}, '_id').lean();
+    recipientIds = users.map((user) => String(user._id));
+  }
+
+  if (!recipientIds.length) {
+    if (['USERS', 'SELECTED_USERS'].includes(normalizedTarget)) {
+      throw new ApiError(400, 'At least one valid notification recipient is required.');
+    }
+    return { sentCount: 0 };
+  }
+
+  const created = await createNotificationsForRecipients(recipientIds, {
+    type,
+    title: String(title).trim(),
+    message: String(message).trim(),
+    relatedEntityType: 'CONTENT',
+    relatedEntityId: new mongoose.Types.ObjectId(),
+  });
+
+  return { sentCount: created.length };
 }

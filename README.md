@@ -67,6 +67,39 @@ Mentees and mentors can manage their own profiles through
 also has a `/profile/completion` endpoint. Profile data is stored separately
 from authentication data and is scoped to the authenticated user.
 
+## Development integration-test accounts
+
+The optional `npm run seed:test` command provisions one ADMIN, one MENTOR
+applicant, and one MENTEE for local integration testing. It never runs during
+server startup. The mentor is created as a MENTEE with a pending application;
+use the normal admin approval endpoint to approve the application. The command
+does not create mentorship relationships, messages, or goals.
+
+Configure these values in the ignored root `.env` file:
+
+- `TEST_ADMIN_EMAIL` / `TEST_ADMIN_PASSWORD`
+- `TEST_MENTOR_EMAIL` / `TEST_MENTOR_PASSWORD`
+- `TEST_MENTEE_EMAIL` / `TEST_MENTEE_PASSWORD`
+
+Use unique email addresses in the reserved `.test` domain and distinct,
+strong passwords of 8–72 UTF-8 bytes. The seed command does not print passwords
+or change credentials for existing accounts. Existing accounts must have the
+configured role, be active, and already match the configured password.
+
+Provisioning requires both `NODE_ENV=development` and
+`SEED_TEST_ACCOUNTS=true`. On PowerShell, run:
+
+```powershell
+$env:NODE_ENV = "development"
+$env:SEED_TEST_ACCOUNTS = "true"
+npm run seed:test
+```
+
+The command additionally refuses MongoDB URIs that do not point to
+`localhost`, `127.0.0.1`, or `::1`. It uses the normal `MONGO_URI` only after
+these checks, so it cannot seed a remote/production MongoDB instance. Never
+enable this command in production.
+
 ## Production build
 
 ```bash

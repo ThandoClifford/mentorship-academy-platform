@@ -3,7 +3,9 @@
   getUnreadCount,
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  broadcastNotification,
 } from '../services/notificationService.js';
+import { logAdminAction } from '../services/auditService.js';
 
 function getUserId(request) {
   return request.user._id;
@@ -27,5 +29,29 @@ export async function markAsRead(request, response) {
 
 export async function markAllAsRead(request, response) {
   const result = await markAllNotificationsAsRead(getUserId(request));
+  response.status(200).json(result);
+}
+
+export async function broadcastAdminNotifications(request, response) {
+  const { target, recipients, title, message } = request.body ?? {};
+  const result = await broadcastNotification({
+    target,
+    recipients,
+    title,
+    message,
+    type: 'ADMIN_ANNOUNCEMENT',
+  });
+
+  await logAdminAction({
+    actor: request.user._id,
+    action: 'ADMIN_ANNOUNCEMENT',
+    entityType: 'NOTIFICATION',
+    entityId: request.user._id,
+    metadata: {
+      target: target || 'ALL_USERS',
+      recipientCount: result.sentCount || 0,
+    },
+  });
+
   response.status(200).json(result);
 }

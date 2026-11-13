@@ -1,37 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import './HomePage.css';
 import {
   submitMentorApplication,
   getMyMentorApplication,
 } from '../../services/mentorApplicationService.js';
-
-const MENTORS = [
-  {
-    name: 'Naledi M.',
-    role: 'Leadership & Career Mentor',
-    score: 96,
-    tags: ['Leadership', 'Career', 'Confidence'],
-    icon: '👩🏾‍💼',
-    reason: 'Strong alignment with leadership growth and career direction.',
-  },
-  {
-    name: 'Zanele K.',
-    role: 'Entrepreneurship & Business Mentor',
-    score: 91,
-    tags: ['Business', 'Networking', 'Growth'],
-    icon: '👩🏿‍💻',
-    reason: 'Excellent fit for entrepreneurship, networking and business goals.',
-  },
-  {
-    name: 'Ayanda S.',
-    role: 'Corporate Career Mentor',
-    score: 87,
-    tags: ['Career', 'Skills', 'Leadership'],
-    icon: '👩🏽‍💼',
-    reason: 'Strong experience match for workplace readiness and leadership.',
-  },
-];
 
 const STORIES = [
   {
@@ -81,19 +55,14 @@ const STATUS_LABELS = {
 export default function HomePage() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState('home');
+  const location = useLocation();
+  const [navOpen, setNavOpen] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
   const [storyOpen, setStoryOpen] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
-  const [results, setResults] = useState([]);
-  const [form, setForm] = useState({
-    role: 'Young professional',
-    goals: [],
-    bio: '',
-    experience: 'Leadership',
-  });
   const [application, setApplication] = useState(null);
   const [appLoading, setAppLoading] = useState(false);
+  const [appChecked, setAppChecked] = useState(false);
   const [appError, setAppError] = useState(null);
   const [appForm, setAppForm] = useState({
     jobTitle: '',
@@ -114,59 +83,66 @@ export default function HomePage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  const toggleGoal = (value) => {
-    setForm((prev) => {
-      const next = prev.goals.includes(value)
-        ? prev.goals.filter((g) => g !== value)
-        : [...prev.goals, value];
-      return { ...prev, goals: next };
-    });
-  };
-
-  const runMatch = () => {
-    const { goals, experience } = form;
-    const list = MENTORS.map((m) => {
-      let s = m.score;
-      if (goals.includes('leadership') && m.tags.includes('Leadership')) s += 2;
-      if (goals.includes('career') && m.tags.includes('Career')) s += 2;
-      if (goals.includes('business') && m.tags.includes('Business')) s += 3;
-      if (goals.includes('network') && m.tags.includes('Networking')) s += 2;
-      if (goals.includes('confidence') && m.tags.includes('Confidence')) s += 2;
-      if (experience.toLowerCase().includes(m.role.split(' ')[0].toLowerCase())) s += 1;
-      return { ...m, score: Math.min(99, s) };
-    }).sort((a, b) => b.score - a.score);
-    setResults(list);
-    setActiveView('results');
-  };
-
   const openStory = (i) => {
     setStoryIndex(i);
     setStoryOpen(true);
   };
 
-  useEffect(() => {
-    if (authLoading || !isAuthenticated) {
-      setAppLoading(false);
+  const loadApplication = useCallback(async () => {
+    if (!isAuthenticated) {
+      setApplication(null);
+      setAppChecked(true);
       return;
     }
-    let active = true;
-    getMyMentorApplication()
-      .then((data) => {
-        if (active) setApplication(data?.application || null);
-      })
-      .catch(() => {
-        if (active) setApplication(null);
-      })
-      .finally(() => {
-        if (active) setAppLoading(false);
-      });
-    return () => { active = false; };
-  }, [authLoading, isAuthenticated]);
+
+    setAppLoading(true);
+    setAppError(null);
+    try {
+      const data = await getMyMentorApplication();
+      setApplication(data?.application || null);
+    } catch (error) {
+      setAppError(error.response?.data?.message || 'Could not load your mentor application status.');
+    } finally {
+      setAppLoading(false);
+      setAppChecked(true);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    setAppChecked(false);
+    loadApplication();
+  }, [authLoading, loadApplication]);
+
+  useEffect(() => {
+    if (
+      authLoading ||
+      !isAuthenticated ||
+      !appChecked ||
+      location.state?.journeyAction !== 'mentor-application'
+    ) return;
+
+    setApplyOpen(true);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [appChecked, authLoading, isAuthenticated, location.pathname, location.state, navigate]);
+
+  function handleFindMentor() {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { journey: 'mentee' } });
+      return;
+    }
+
+    const roleHome = {
+      MENTEE: '/mentee',
+      MENTOR: '/mentor',
+      ADMIN: '/admin',
+    };
+    navigate(roleHome[user?.role] || '/');
+  }
 
   const handleApplyClick = () => {
     if (!isAuthenticated) {
-      sessionStorage.setItem('mentor_application_return', window.location.pathname);
-      navigate('/login');
+      navigate('/login', { state: { journey: 'mentor' } });
       return;
     }
     setApplyOpen(true);
@@ -246,8 +222,7 @@ export default function HomePage() {
     } catch (err) {
       const status = err.response?.status;
       if (status === 401) {
-        sessionStorage.setItem('mentor_application_return', window.location.pathname);
-        navigate('/login');
+        navigate('/login', { state: { journey: 'mentor' } });
         return;
       }
       let message = err.message || 'Could not submit application. Please try again.';
@@ -260,96 +235,192 @@ export default function HomePage() {
     }
   };
 
+  async function handleApplicationRetry() {
+    setAppChecked(false);
+    await loadApplication();
+  }
+
   const statusText = application
     ? STATUS_LABELS[application.status] || application.status
     : 'Not submitted';
 
   return (
     <div className="landing-page">
-      <div className="top">
-        THE MENTORSHIP ACADEMY &middot; E-MENTORSHIP FOR YOUNG WOMEN
-      </div>
-
-      <nav>
-        <a className="brand" href="#" onClick={(e) => { e.preventDefault(); setActiveView('home'); }}>
-          <div className="logo">MA</div>
-          <small>MENTORSHIP &middot; ACADEMY</small>
-        </a>
-        <div className="links">
-          <a href="#about">About</a>
-          <a href="#program">E-Mentorship</a>
-          <a href="#mentors">Mentors</a>
-          <a href="#stories">Our Stories</a>
-          <button className="btn outline" onClick={() => setActiveView('match')}>
-            Find My Match
+      <header className="academy-header">
+        <div className="academy-header-inner">
+          <a
+            className="academy-brand"
+            href="#home"
+            onClick={(event) => {
+              event.preventDefault();
+              setNavOpen(false);
+            }}
+            aria-label="The Mentorship Academy home"
+          >
+            <span className="academy-brand-mark">MA</span>
+            <span className="academy-brand-name">
+              <strong>Mentorship</strong>
+              <small>ACADEMY</small>
+            </span>
+          </a>
+          <button
+            aria-expanded={navOpen}
+            aria-label={navOpen ? 'Close navigation' : 'Open navigation'}
+            className={`academy-menu-toggle${navOpen ? ' is-open' : ''}`}
+            onClick={() => setNavOpen((open) => !open)}
+            type="button"
+          >
+            <span />
+            <span />
+            <span />
           </button>
-          <button className="btn primary" onClick={handleApplyClick}>
-            Apply Now
-          </button>
+          <nav className={`academy-nav${navOpen ? ' is-open' : ''}`} aria-label="Main navigation">
+            <div className="academy-nav-links">
+              <a href="#about" onClick={() => setNavOpen(false)}>About</a>
+              <a href="#program" onClick={() => setNavOpen(false)}>Programmes</a>
+              <a href="#journey" onClick={() => setNavOpen(false)}>How it works</a>
+              <a href="#stories" onClick={() => setNavOpen(false)}>Stories</a>
+              <Link to="/resources" onClick={() => setNavOpen(false)}>Resources</Link>
+            </div>
+            <div className="academy-nav-actions">
+              <Link
+                className="academy-login"
+                state={!isAuthenticated ? { journey: 'mentee' } : undefined}
+                to={isAuthenticated ? `/${user.role.toLowerCase()}` : '/login'}
+                onClick={() => setNavOpen(false)}
+              >
+                Log in
+              </Link>
+              <Link
+                className="academy-join"
+                state={!isAuthenticated ? { journey: 'mentee' } : undefined}
+                to={isAuthenticated ? `/${user.role.toLowerCase()}` : '/register'}
+                onClick={() => setNavOpen(false)}
+              >
+                Get started
+              </Link>
+            </div>
+          </nav>
         </div>
-      </nav>
+      </header>
 
       <main
         id="home"
-        className={`page ${activeView === 'home' ? 'active' : ''}`}
+        className="page active"
       >
-        <section className="hero">
-          <div>
-            <div className="kicker">Mentorship that moves women forward</div>
-            <h1>
-              Meet. Learn. <span>Lead.</span>
-            </h1>
-            <p>
-              The Mentorship Academy connects young women with meaningful
-              mentorship to build confidence, grow networks and unlock
-              leadership potential.
-            </p>
-            <div className="actions">
-              <button
-                className="btn yellow"
-                onClick={() => setActiveView('match')}
-              >
-                Find My Mentor Match &rarr;
-              </button>
-              <button className="btn outline" onClick={handleApplyClick}>
-                Join the Academy
-              </button>
+        <section className="academy-hero">
+          <div className="academy-hero-grid">
+            <div className="academy-hero-copy">
+              <span className="academy-eyebrow">
+                <span /> Mentorship Academy
+              </span>
+              <h1>
+                Find the right mentor.
+                <span> Build your future.</span>
+              </h1>
+              <p>
+                A community for young women to find guidance, grow with purpose
+                and lead with confidence.
+              </p>
+              <div className="academy-hero-actions">
+                <button className="academy-primary-action" onClick={handleFindMentor}>
+                  Find a Mentor <span aria-hidden="true">→</span>
+                </button>
+                <button className="academy-secondary-action" onClick={handleApplyClick}>
+                  Become a Mentor
+                </button>
+              </div>
+              <div className="academy-hero-note">
+                <span className="academy-note-mark" aria-hidden="true">✦</span>
+                <span>Guidance that grows with you</span>
+              </div>
             </div>
-            <div className="mini">
-              <div>
-                <strong>01</strong>Connect
+
+            <div
+              className="academy-hero-art"
+              role="img"
+              aria-label="An illustration of a mentor and mentee connected through shared growth"
+            >
+              <div className="academy-art-glow" />
+              <div className="academy-art-orbit academy-art-orbit-one" />
+              <div className="academy-art-orbit academy-art-orbit-two" />
+              <div className="academy-art-spark academy-art-spark-one">✦</div>
+              <div className="academy-art-spark academy-art-spark-two">✦</div>
+              <div className="academy-connection">
+                <div className="academy-person academy-person-mentor">
+                  <svg viewBox="0 0 96 112" role="presentation" aria-hidden="true">
+                    <circle cx="48" cy="33" r="20" />
+                    <path d="M12 108c2-29 16-45 36-45s34 16 36 45" />
+                    <path d="M28 34c0-15 8-24 20-24s20 9 20 24" />
+                  </svg>
+                  <span>Experience</span>
+                </div>
+                <div className="academy-connection-line" aria-hidden="true">
+                  <span>✦</span>
+                </div>
+                <div className="academy-person academy-person-mentee">
+                  <svg viewBox="0 0 96 112" role="presentation" aria-hidden="true">
+                    <circle cx="48" cy="33" r="20" />
+                    <path d="M12 108c2-29 16-45 36-45s34 16 36 45" />
+                    <path d="M27 29c3-14 10-20 21-20 12 0 19 8 21 20" />
+                  </svg>
+                  <span>Ambition</span>
+                </div>
               </div>
-              <div>
-                <strong>02</strong>Grow
+              <div className="academy-art-caption">
+                <span className="academy-caption-icon" aria-hidden="true">↗</span>
+                <span>
+                  <strong>Grow, together</strong>
+                  <small>One meaningful connection at a time</small>
+                </span>
               </div>
-              <div>
-                <strong>03</strong>Lead
-              </div>
+              <div className="academy-art-label">A community of women moving forward</div>
             </div>
           </div>
-          <div className="visual">
-            <div className="circle" />
-            <div className="card profile">
-              <div className="avatar">👩🏾‍💼</div>
-              <h3>Women supporting women</h3>
-              <p style={{ fontSize: 12, color: '#756c7d' }}>
-                Career &middot; Leadership &middot; Confidence
-              </p>
-              <span className="tag">Mentorship</span>
-              <span className="tag">Leadership</span>
-            </div>
-            <div className="card match">
-              <div style={{ fontSize: 11, fontWeight: 800 }}>AI MATCH PREVIEW</div>
-              <div className="score">94% match</div>
-              <div className="matchbar"><span /></div>
-              <div style={{ fontSize: 11, color: '#756c7d' }}>
-                Leadership &middot; Career growth &middot; Networking
-              </div>
-            </div>
+          <div className="academy-trust-line">
+            <span>Thoughtful mentorship.</span>
+            <span className="academy-trust-dot" />
+            <span>Real growth.</span>
+            <span className="academy-trust-dot" />
+            <span>Stronger futures.</span>
           </div>
         </section>
 
-        <section className="section center" id="program">
+        <section className="academy-value-section" id="program">
+          <div className="academy-section-heading">
+            <span className="academy-eyebrow">Why Mentorship Academy?</span>
+            <h2>Make room for what’s possible.</h2>
+            <p>Meaningful support can change how you see your next step—and what you believe you can achieve.</p>
+          </div>
+          <div className="academy-value-grid">
+            <article className="academy-value-card">
+              <span className="academy-value-number">01</span>
+              <h3>Find your person</h3>
+              <p>Connect with a mentor who understands your ambitions and can help you see new possibilities.</p>
+              <span className="academy-value-mark" aria-hidden="true">↗</span>
+            </article>
+            <article className="academy-value-card">
+              <span className="academy-value-number">02</span>
+              <h3>Grow with purpose</h3>
+              <p>Turn the things you want to change into thoughtful goals and practical next steps.</p>
+              <span className="academy-value-mark" aria-hidden="true">✦</span>
+            </article>
+            <article className="academy-value-card">
+              <span className="academy-value-number">03</span>
+              <h3>Build your confidence</h3>
+              <p>Make space to learn, reflect and recognise the progress you’re making along the way.</p>
+              <span className="academy-value-mark" aria-hidden="true">◎</span>
+            </article>
+            <article className="academy-value-card">
+              <span className="academy-value-number">04</span>
+              <h3>Lead your next chapter</h3>
+              <p>Bring your growing experience, voice and network into the future you’re creating.</p>
+              <span className="academy-value-mark" aria-hidden="true">↗</span>
+            </article>
+          </div>
+        </section>
+
+        <section className="section center" id="journey">
           <div className="eyebrow">How it works</div>
           <h2>Your mentorship journey</h2>
           <p className="lead">
@@ -369,8 +440,8 @@ export default function HomePage() {
               <div className="num">2</div>
               <h3>Get your match</h3>
               <p>
-                Our prototype AI compares your goals and preferences with mentor
-                expertise and produces ranked matches.
+                Our matching service recommends approved mentors based on your
+                profile, goals and preferences.
               </p>
             </div>
             <div className="step">
@@ -414,29 +485,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="section center" id="mentors">
-          <div className="eyebrow">Mentor community</div>
-          <h2>Meet the kind of mentors you can connect with</h2>
-          <p className="lead">
-            The prototype uses mentor expertise, goals and interests to
-            demonstrate how intelligent matching could work.
-          </p>
-          <div className="cards">
-            {MENTORS.map((m) => (
-              <div className="person" key={m.name}>
-                <div className="photo">{m.icon}</div>
-                <div className="body">
-                  <h3>{m.role}</h3>
-                  <p>{m.reason}</p>
-                  {m.tags.map((t) => (
-                    <span className="pill" key={t}>{t}</span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
         <section className="section stories-section" id="stories">
           <div className="stories-head">
             <div>
@@ -457,7 +505,7 @@ export default function HomePage() {
             {STORIES.map((s, i) => (
               <article
                 className={`story-card${i === 0 ? ' featured' : ''}`}
-                key={s.title}
+                key={`${s.year}-${s.title}`}
                 onClick={() => openStory(i)}
               >
                 <div className={`story-image ${s.cls}`}>
@@ -479,7 +527,7 @@ export default function HomePage() {
               <span className="eyebrow">Your story starts here</span>
               <h3>Every connection can become a new chapter.</h3>
             </div>
-            <button className="btn primary" onClick={() => setActiveView('match')}>
+            <button className="btn primary" onClick={handleFindMentor}>
               Find My Mentor &rarr;
             </button>
           </div>
@@ -489,173 +537,14 @@ export default function HomePage() {
           <div>
             <h2>Ready to find your direction?</h2>
             <p>
-              Use the interactive matchmaking prototype to see how a mentee
-              could move from her goals to a recommended mentor.
+              Tell us what matters to you and explore mentors whose experience
+              can support your next step.
             </p>
           </div>
-          <button className="btn yellow" onClick={() => setActiveView('match')}>
-            Try the AI Matchmaker &rarr;
+          <button className="btn yellow" onClick={handleFindMentor}>
+            Find a Mentor &rarr;
           </button>
         </div>
-      </main>
-
-      <main id="match" className={`page ${activeView === 'match' ? 'active' : ''}`}>
-        <section className="matchpage">
-          <div className="wizard">
-            <div className="panel">
-              <a className="back" href="#" onClick={(e) => { e.preventDefault(); setActiveView('home'); }}>
-                &larr; Back to Academy
-              </a>
-              <h1 style={{ margin: '0 0 8px' }}>Find Your Mentor</h1>
-              <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-                Tell us about your goals. This demo will simulate how AI could
-                rank suitable mentors.
-              </p>
-              <div className="progress">
-                <span className="active" />
-                <span />
-                <span />
-              </div>
-              <label>What best describes you?</label>
-              <select
-                id="role"
-                value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value })}
-              >
-                <option>Young professional</option>
-                <option>Student</option>
-                <option>Entrepreneur</option>
-                <option>Job seeker</option>
-              </select>
-              <label>What are you hoping to grow?</label>
-              <div className="checks">
-                {[
-                  { value: 'career', label: 'Career direction' },
-                  { value: 'leadership', label: 'Leadership' },
-                  { value: 'business', label: 'Business' },
-                  { value: 'network', label: 'Networking' },
-                  { value: 'confidence', label: 'Confidence' },
-                  { value: 'skills', label: 'Skills' },
-                ].map((g) => (
-                  <label className="check" key={g.value}>
-                    <input
-                      type="checkbox"
-                      className="goal"
-                      value={g.value}
-                      checked={form.goals.includes(g.value)}
-                      onChange={() => toggleGoal(g.value)}
-                    />
-                    {g.label}
-                  </label>
-                ))}
-              </div>
-              <label>Tell us about your ambition</label>
-              <textarea
-                id="bio"
-                placeholder="Example: I want to move into leadership and build my professional network."
-                value={form.bio}
-                onChange={(e) => setForm({ ...form, bio: e.target.value })}
-              />
-              <label>Preferred mentor experience</label>
-              <select
-                id="experience"
-                value={form.experience}
-                onChange={(e) => setForm({ ...form, experience: e.target.value })}
-              >
-                <option>Leadership</option>
-                <option>Entrepreneurship</option>
-                <option>Corporate career</option>
-                <option>General career guidance</option>
-              </select>
-              <button
-                className="btn primary"
-                style={{ marginTop: 22, width: '100%' }}
-                onClick={runMatch}
-              >
-                Find My Matches &rarr;
-              </button>
-            </div>
-            <div className="panel ai">
-              <div className="orb">AI</div>
-              <h2>Smart Matchmaking</h2>
-              <p style={{ color: '#eadff0', lineHeight: 1.7 }}>
-                The prototype scores mentors against the information you
-                provide.
-              </p>
-              <ul>
-                <li>Goal alignment</li>
-                <li>Experience relevance</li>
-                <li>Shared interests</li>
-                <li>Mentor fit</li>
-              </ul>
-              <div
-                style={{
-                  marginTop: 30,
-                  padding: 14,
-                  border: '1px solid #8b62b0',
-                  borderRadius: 12,
-                  fontSize: 11,
-                }}
-              >
-                This is a front-end simulation. A production system would
-                connect these rules to your real mentor database and AI service.
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <main id="results" className={`page ${activeView === 'results' ? 'active' : ''}`}>
-        <section className="matchpage">
-          <div className="results">
-            <a className="back" href="#" onClick={(e) => { e.preventDefault(); setActiveView('match'); }}>
-              &larr; Change my answers
-            </a>
-            <h1>Your Mentor Matches</h1>
-            <p style={{ color: 'var(--muted)' }}>
-              Based on the goals you selected, these mentors rank highest.
-            </p>
-            <div id="resultList">
-              {results.map((m) => (
-                <div className="result" key={m.name}>
-                  <div className="avatar2">{m.icon}</div>
-                  <div>
-                    <div style={{ fontWeight: 900, fontSize: 17 }}>{m.name}</div>
-                    <div style={{ fontSize: 12, color: '#756c7d', marginTop: 3 }}>
-                      {m.role}
-                    </div>
-                    <div className="tags">
-                      {m.tags.map((t) => (
-                        <span className="pill" key={t}>{t}</span>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#756c7d' }}>
-                      {m.reason}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="score">{m.score}% match</span>
-                    <div className="result-actions" style={{ marginTop: 10 }}>
-                      <button
-                        className="btn outline"
-                        onClick={() => alert('Prototype: mentor profile opened.')}
-                      >
-                        View Profile
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button
-              className="btn outline"
-              onClick={() => setActiveView('home')}
-              style={{ marginTop: 20 }}
-            >
-              Return to Academy
-            </button>
-          </div>
-        </section>
       </main>
 
       <div
@@ -666,7 +555,18 @@ export default function HomePage() {
           <button className="close" onClick={() => setApplyOpen(false)}>
             &times;
           </button>
-          {application ? (
+          {appLoading || !appChecked ? (
+            <p role="status">Checking your application status…</p>
+          ) : appError ? (
+            <div>
+              <div className="eyebrow">Mentor application</div>
+              <h2>We couldn’t check your application</h2>
+              <p role="alert">{appError}</p>
+              <button className="btn primary" onClick={handleApplicationRetry} type="button">
+                Try again
+              </button>
+            </div>
+          ) : application ? (
             <div>
               <div className="eyebrow">Application status</div>
               <h2>{statusText}</h2>
@@ -739,18 +639,21 @@ export default function HomePage() {
               <input
                 placeholder="e.g. Product Manager"
                 value={appForm.jobTitle}
+                required
                 onChange={(e) => setAppForm({ ...appForm, jobTitle: e.target.value })}
               />
               <label>Company</label>
               <input
                 placeholder="e.g. Tech Solutions Inc."
                 value={appForm.company}
+                required
                 onChange={(e) => setAppForm({ ...appForm, company: e.target.value })}
               />
               <label>Industry</label>
               <input
                 placeholder="e.g. Technology"
                 value={appForm.industry}
+                required
                 onChange={(e) => setAppForm({ ...appForm, industry: e.target.value })}
               />
               <label>Years of experience</label>
@@ -766,6 +669,7 @@ export default function HomePage() {
               <textarea
                 placeholder="Summarise your professional experience and areas of expertise."
                 value={appForm.professionalBackground}
+                required
                 onChange={(e) =>
                   setAppForm({ ...appForm, professionalBackground: e.target.value })
                 }
@@ -835,6 +739,7 @@ export default function HomePage() {
               <textarea
                 placeholder="Tell us about your goals and why you want to mentor."
                 value={appForm.motivation}
+                required
                 onChange={(e) => setAppForm({ ...appForm, motivation: e.target.value })}
                 rows={3}
               />
@@ -873,7 +778,7 @@ export default function HomePage() {
             </div>
             <button
               className="btn primary"
-              onClick={() => { setStoryOpen(false); setActiveView('match'); }}
+              onClick={() => { setStoryOpen(false); handleFindMentor(); }}
             >
               Start Your Mentorship Journey &rarr;
             </button>
@@ -902,15 +807,15 @@ export default function HomePage() {
           </div>
           <div>
             <h4>Join</h4>
-            <a onClick={(e) => { e.preventDefault(); handleApplyClick(); }}>Apply Now</a>
-            <a onClick={(e) => { e.preventDefault(); handleApplyClick(); }}>Become a Mentor</a>
-            <a>Become a Mentee</a>
+            <a href="#apply" onClick={(e) => { e.preventDefault(); handleApplyClick(); }}>Apply Now</a>
+            <a href="#apply" onClick={(e) => { e.preventDefault(); handleApplyClick(); }}>Become a Mentor</a>
+            <Link to="/register">Become a Mentee</Link>
           </div>
           <div>
             <h4>Support</h4>
-            <a>Contact</a>
-            <a>Resources</a>
-            <a>FAQ</a>
+            <Link to="/contact">Contact</Link>
+            <Link to="/resources">Resources</Link>
+            <Link to="/faq">FAQ</Link>
           </div>
         </div>
         <div className="copy">

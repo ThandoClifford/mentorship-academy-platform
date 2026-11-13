@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import * as profileService from '../../services/profileService.js';
 
@@ -29,29 +30,35 @@ const careerStages = [
 ];
 
 const menteeConfig = {
-  heading: 'Mentee Profile',
-  intro: 'Share your background, interests, and goals with the Academy.',
+  heading: 'Build your mentorship profile',
+  intro: "Tell us about your background, goals and interests. We'll use this information to help you find better mentor matches.",
   getter: profileService.getMenteeProfile,
   updater: profileService.updateMenteeProfile,
   completionGetter: profileService.getMenteeProfileCompletion,
+  sectionDescriptions: {
+    'About You': 'Give mentors a brief introduction and a little context about you.',
+    'Education & Career': 'Share your education and the career areas you are exploring.',
+    'Your Goals': 'Tell us what you want to learn, achieve and build on.',
+    'Mentor Preferences': 'Choose the experience and approach that would best support you.',
+  },
   fields: [
-    { name: 'profilePhoto', label: 'Profile photo URL', type: 'url', section: 'About you' },
-    { name: 'bio', label: 'About me', type: 'textarea', section: 'About you', rows: 4 },
-    { name: 'phone', label: 'Phone', section: 'About you' },
-    { name: 'location', label: 'Location', section: 'About you' },
-    { name: 'institution', label: 'Institution', section: 'Education and career' },
-    { name: 'qualification', label: 'Qualification', section: 'Education and career' },
-    { name: 'fieldOfStudy', label: 'Field of study', section: 'Education and career' },
-    { name: 'careerStage', label: 'Career stage', type: 'select', options: careerStages, section: 'Education and career' },
-    { name: 'careerGoals', label: 'Career goals', type: 'array', section: 'Education and career' },
-    { name: 'mentorshipGoals', label: 'Mentorship goals', type: 'array', section: 'Mentorship goals' },
-    { name: 'interests', label: 'Interests', type: 'array', section: 'Mentorship goals' },
-    { name: 'preferredMentorExpertise', label: 'Preferred mentor expertise', type: 'array', section: 'Mentorship goals' },
-    { name: 'preferredIndustry', label: 'Preferred industries', type: 'array', section: 'Mentorship goals' },
-    { name: 'preferredMentorshipStyle', label: 'Preferred mentorship styles', type: 'array-select', options: mentorshipStyles, section: 'Mentorship goals' },
-    { name: 'skills', label: 'Skills', type: 'array', section: 'Matching information' },
-    { name: 'industries', label: 'Industries', type: 'array', section: 'Matching information' },
-    { name: 'experienceAreas', label: 'Experience areas', type: 'array', section: 'Matching information' },
+    { name: 'profilePhoto', label: 'Profile photo URL', type: 'url', section: 'About You' },
+    { name: 'bio', label: 'Introduction', type: 'textarea', section: 'About You', rows: 4 },
+    { name: 'phone', label: 'Phone', section: 'About You' },
+    { name: 'location', label: 'Location', section: 'About You' },
+    { name: 'institution', label: 'Institution', section: 'Education & Career' },
+    { name: 'qualification', label: 'Qualification', section: 'Education & Career' },
+    { name: 'fieldOfStudy', label: 'Field of study', section: 'Education & Career' },
+    { name: 'careerStage', label: 'Career stage', type: 'select', options: careerStages, section: 'Education & Career' },
+    { name: 'industries', label: 'Industries', type: 'array', section: 'Education & Career' },
+    { name: 'experienceAreas', label: 'Experience areas', type: 'array', section: 'Education & Career' },
+    { name: 'careerGoals', label: 'Career goals', type: 'array', section: 'Your Goals' },
+    { name: 'mentorshipGoals', label: 'Mentorship goals', type: 'array', section: 'Your Goals' },
+    { name: 'interests', label: 'Interests', type: 'array', section: 'Your Goals' },
+    { name: 'skills', label: 'Skills', type: 'array', section: 'Your Goals' },
+    { name: 'preferredMentorExpertise', label: 'Preferred mentor expertise', type: 'array', section: 'Mentor Preferences' },
+    { name: 'preferredIndustry', label: 'Preferred industries', type: 'array', section: 'Mentor Preferences' },
+    { name: 'preferredMentorshipStyle', label: 'Preferred mentorship style', type: 'array-select', options: mentorshipStyles, section: 'Mentor Preferences' },
   ],
 };
 
@@ -124,6 +131,32 @@ function profilePayload(profile, fields) {
 function getFieldError(errors, field) {
   if (!errors) return '';
   return errors[field] || errors[`availability.${field}`] || '';
+}
+
+const completionFieldLabels = {
+  bio: 'About me',
+  location: 'Location',
+  institution: 'Institution',
+  qualification: 'Qualification',
+  fieldOfStudy: 'Field of study',
+  careerStage: 'Career stage',
+  careerGoals: 'Career goals',
+  mentorshipGoals: 'Mentorship goals',
+  interests: 'Interests',
+  preferredMentorExpertise: 'Preferred mentor expertise',
+  preferredIndustry: 'Preferred industries',
+  preferredMentorshipStyle: 'Preferred mentorship style',
+  skills: 'Skills',
+  industries: 'Industries',
+  experienceAreas: 'Experience areas',
+  availability: 'Availability',
+};
+
+function getCompletionFieldLabel(field) {
+  if (completionFieldLabels[field]) return completionFieldLabels[field];
+  return field
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/^./, (character) => character.toUpperCase());
 }
 
 function ArrayField({ field, id, value, onChange, error }) {
@@ -279,6 +312,7 @@ function ProfileField({ field, value, onChange, error }) {
 export default function ProfileEditor({ role }) {
   const config = role === 'MENTEE' ? menteeConfig : mentorConfig;
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(() => createEmptyProfile(config));
   const [completion, setCompletion] = useState(null);
   const [mentorStatus, setMentorStatus] = useState('');
@@ -349,6 +383,7 @@ export default function ProfileEditor({ role }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    const wasComplete = Boolean(completion?.isComplete);
     setSaving(true);
     setPageError('');
     setFieldErrors({});
@@ -372,6 +407,9 @@ export default function ProfileEditor({ role }) {
       setMentorStatus(savedProfile.status || mentorStatus);
       setCompletion(profileCompletion);
       setSuccess('Your profile has been saved.');
+      if (role === 'MENTEE' && !wasComplete && profileCompletion?.isComplete) {
+        navigate('/mentee/match', { replace: true });
+      }
     } catch (error) {
       setFieldErrors(error.response?.data?.errors || {});
       setPageError(
@@ -385,7 +423,7 @@ export default function ProfileEditor({ role }) {
 
   if (loading) {
     return (
-      <section className="profile-page" role="status">
+      <section className={`profile-page${role === 'MENTEE' ? ' profile-page-mentee' : ''}`} role="status">
         <p className="profile-loading">Loading your profile…</p>
       </section>
     );
@@ -394,10 +432,10 @@ export default function ProfileEditor({ role }) {
   const sections = [...new Set(config.fields.map((field) => field.section))];
 
   return (
-    <section className="profile-page">
+    <section className={`profile-page${role === 'MENTEE' ? ' profile-page-mentee' : ''}`}>
       <header className="profile-page-header">
         <div>
-          <span className="eyebrow">The Mentorship Academy</span>
+          <span className="eyebrow">{role === 'MENTEE' ? 'Your mentorship journey' : 'The Mentorship Academy'}</span>
           <h1>{config.heading}</h1>
           <p>{config.intro}</p>
           {user && (
@@ -421,13 +459,25 @@ export default function ProfileEditor({ role }) {
           >
             <span style={{ width: `${completion?.percentage ?? 0}%` }} />
           </div>
-          <small>
-            {completion?.completedFields ?? 0} of {completion?.totalFields ?? 0}{' '}
-            recommended fields
-          </small>
-          {completion?.missingFields?.length > 0 && (
-            <small className="profile-missing-fields">
-              Still to add: {completion.missingFields.join(', ')}
+          {role === 'MENTEE' ? (
+            <>
+              <p>
+                {completion?.isComplete
+                  ? 'Your profile is ready to help us recommend mentors who fit your goals.'
+                  : 'Complete your profile to help us understand your goals and recommend mentors who are a better fit.'}
+              </p>
+              {completion?.missingFields?.length > 0 && (
+                <ul className="profile-missing-list">
+                  {[...new Set(completion.missingFields.map(getCompletionFieldLabel))].map((label) => (
+                    <li key={label}>{label}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <small>
+              {completion?.completedFields ?? 0} of {completion?.totalFields ?? 0}{' '}
+              recommended fields
             </small>
           )}
         </div>
@@ -453,6 +503,9 @@ export default function ProfileEditor({ role }) {
         {sections.map((section) => (
           <fieldset className="profile-section" key={section}>
             <legend>{section}</legend>
+            {config.sectionDescriptions?.[section] && (
+              <p className="profile-subsection-description">{config.sectionDescriptions[section]}</p>
+            )}
             <div className="profile-field-grid">
               {config.fields
                 .filter((field) => field.section === section)

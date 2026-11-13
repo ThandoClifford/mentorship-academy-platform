@@ -4411,6 +4411,135 @@ a {
   cursor: pointer;
 }
 
+@media (max-width: 1024px) {
+  .landing-page nav {
+    padding: 0 5vw;
+  }
+  .landing-page .links {
+    gap: 20px;
+    font-size: 13px;
+  }
+  .landing-page .hero {
+    padding: 60px 5vw;
+    gap: 30px;
+  }
+  .landing-page .hero h1 {
+    font-size: 56px;
+    max-width: 100%;
+  }
+  .landing-page .hero p {
+    font-size: 16px;
+    max-width: 100%;
+  }
+  .landing-page .mini {
+    gap: 20px;
+  }
+  .landing-page .circle {
+    width: 320px;
+    height: 320px;
+    top: 10px;
+    right: 2%;
+  }
+  .landing-page .profile {
+    width: 240px;
+    right: 10%;
+    top: 40px;
+    padding: 18px;
+  }
+  .landing-page .profile .avatar {
+    height: 150px;
+    font-size: 55px;
+  }
+  .landing-page .match {
+    width: 220px;
+    bottom: 25px;
+    padding: 15px;
+  }
+  .landing-page .match .score {
+    font-size: 26px;
+  }
+  .landing-page .section {
+    padding: 70px 5vw;
+  }
+  .landing-page .section h2 {
+    font-size: 34px;
+  }
+  .landing-page .steps {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .landing-page .step {
+    padding: 24px;
+  }
+  .landing-page .split {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .landing-page .featurebox {
+    padding: 30px;
+    min-height: auto;
+  }
+  .landing-page .cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .landing-page .person .photo {
+    height: 170px;
+    font-size: 50px;
+  }
+  .landing-page .cta {
+    margin: 0 5vw 65px;
+    padding: 40px;
+    display: block;
+    text-align: center;
+  }
+  .landing-page .cta h2 {
+    font-size: 28px;
+    margin-bottom: 12px;
+  }
+  .landing-page .cta p {
+    max-width: 100%;
+    margin: 0 auto 20px;
+  }
+  .landing-page footer {
+    padding: 40px 5vw 25px;
+  }
+  .landing-page .foot {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+  }
+  .landing-page .story-grid {
+    grid-template-columns: 1fr;
+  }
+  .landing-page .story-card.featured .story-image,
+  .landing-page .story-image {
+    height: 220px;
+  }
+  .landing-page .story-bottom {
+    display: block;
+    text-align: center;
+  }
+  .landing-page .story-modal-card {
+    grid-template-columns: 1fr;
+  }
+  .landing-page .story-modal-image {
+    min-height: 240px;
+  }
+  .landing-page .story-modal-content {
+    padding: 30px;
+  }
+  .landing-page .matchpage {
+    padding: 40px 5vw;
+  }
+  .landing-page .wizard {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .landing-page .panel {
+    padding: 24px;
+  }
+}
+
 @media (max-width: 850px) {
   .landing-page .links {
     display: none;
@@ -4478,5 +4607,107 @@ a {
   }
   .landing-page .story-modal-content {
     padding: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .landing-page nav {
+    padding: 0 4vw;
+  }
+  .landing-page .top {
+    padding: 7px 4vw;
+    font-size: 11px;
+  }
+  .landing-page .hero {
+    padding: 45px 4vw;
+  }
+  .landing-page .hero h1 {
+    font-size: 42px;
+  }
+  .landing-page .hero p {
+    font-size: 15px;
+  }
+  .landing-page .actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .landing-page .actions button {
+    width: 100%;
+    text-align: center;
+  }
+  .landing-page .mini {
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+  .landing-page .mini div {
+    text-align: center;
+  }
+  .landing-page .section {
+    padding: 55px 4vw;
+  }
+  .landing-page .section h2 {
+    font-size: 28px;
+  }
+  .landing-page .steps {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .landing-page .step {
+    padding: 20px;
+  }
+  .landing-page .cards {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .landing-page .cta {
+    margin: 0 4vw 50px;
+    padding: 30px;
+  }
+  .landing-page .cta h2 {
+    font-size: 24px;
+  }
+  .landing-page footer {
+    padding: 35px 4vw 20px;
+  }
+  .landing-page .foot {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .landing-page .copy {
+    text-align: center;
+  }
+  .landing-page .matchpage {
+    padding: 30px 4vw;
+  }
+  .landing-page .wizard {
+    gap: 16px;
+  }
+  .landing-page .panel {
+    padding: 20px;
+  }
+  .landing-page .checks {
+    grid-template-columns: 1fr;
+  }
+  .landing-page .result {
+    grid-template-columns: 55px 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+  .landing-page .avatar2 {
+    width: 55px;
+    height: 55px;
+    font-size: 24px;
+  }
+  .landing-page .modalbox {
+    padding: 24px;
+    margin: 0 10px;
+  }
+  .landing-page .story-modal-card {
+    margin: 0 10px;
+  }
+  .landing-page .story-modal-content {
+    padding: 24px;
   }
 }

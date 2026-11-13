@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext.jsx';
 import * as matchingService from '../../../services/matchingService.js';
 import * as mentorshipService from '../../../services/mentorshipService.js';
@@ -7,6 +7,7 @@ import MentorMatchCard from '../../../components/matching/MentorMatchCard.jsx';
 
 export default function MenteeMatchPage() {
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -17,23 +18,27 @@ export default function MenteeMatchPage() {
   const [requestError, setRequestError] = useState('');
   const [requestSuccess, setRequestSuccess] = useState(null);
 
-  const loadMatches = useCallback(async () => {
+  const loadMatches = useCallback(async (isActive = () => true) => {
     try {
-      setError('');
+      if (isActive()) setError('');
       const data = await matchingService.getMentorMatches();
-      setMatches(data.matches || []);
-      setTotalCandidates(data.totalCandidates || 0);
+      if (isActive()) {
+        setMatches(data.matches || []);
+        setTotalCandidates(data.totalCandidates || 0);
+      }
     } catch (err) {
-      if (err.response?.status === 404) {
-        setError('INCOMPLETE_PROFILE');
-      } else {
-        setError(
-          err.response?.data?.message ||
-            'Could not load mentor matches. Please try again.',
-        );
+      if (isActive()) {
+        if (err.response?.status === 404) {
+          setError('INCOMPLETE_PROFILE');
+        } else {
+          setError(
+            err.response?.data?.message ||
+              'Could not load mentor matches. Please try again.',
+          );
+        }
       }
     } finally {
-      setLoading(false);
+      if (isActive()) setLoading(false);
     }
   }, []);
 
@@ -49,12 +54,43 @@ export default function MenteeMatchPage() {
         return;
       }
 
-      await loadMatches();
+      try {
+        const [relationshipResult, requestResult] = await Promise.all([
+          mentorshipService.getMyMentorshipRelationships(),
+          mentorshipService.getMyMentorshipRequests(),
+        ]);
+        if (!active) return;
+
+        const relationships = [
+          ...(relationshipResult.relationships || []),
+          ...(requestResult.relationships || []),
+        ];
+        const hasAssignedMentor = relationships.some((relationship) =>
+          ['ACCEPTED', 'ACTIVE'].includes(relationship.status));
+        if (hasAssignedMentor) {
+          navigate('/mentee/mentor', { replace: true });
+          return;
+        }
+
+        if (relationships.some((relationship) => relationship.status === 'PENDING')) {
+          navigate('/mentee/mentorship/requests', { replace: true });
+          return;
+        }
+
+        await loadMatches(() => active);
+      } catch (requestError) {
+        if (!active) return;
+        setError(
+          requestError.response?.data?.message ||
+            'Could not check your mentorship status. Please try again.',
+        );
+        setLoading(false);
+      }
     }
 
     init();
     return () => { active = false; };
-  }, [user, authLoading, loadMatches]);
+  }, [user, authLoading, loadMatches, navigate]);
 
   function openRequestModal(mentorId) {
     setRequestingMentorId(mentorId);

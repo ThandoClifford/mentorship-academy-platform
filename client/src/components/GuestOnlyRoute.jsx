@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const roleHomePaths = {
@@ -9,6 +9,7 @@ const roleHomePaths = {
 
 export default function GuestOnlyRoute({ children }) {
   const { user, isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -19,6 +20,25 @@ export default function GuestOnlyRoute({ children }) {
   }
 
   if (isAuthenticated) {
+    if (user.role === 'MENTEE' && location.state?.journey === 'mentor') {
+      return (
+        <Navigate
+          to="/"
+          replace
+          state={{ journeyAction: 'mentor-application' }}
+        />
+      );
+    }
+
+    if (user.role === 'MENTEE' && location.state?.journey === 'mentee') {
+      return (
+        <Navigate
+          to={location.state.newlyRegistered ? '/mentee/profile' : '/mentee'}
+          replace
+        />
+      );
+    }
+
     return <Navigate to={roleHomePaths[user.role] || '/'} replace />;
   }
 

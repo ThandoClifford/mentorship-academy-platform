@@ -13,6 +13,10 @@ export const NOTIFICATION_TYPES = Object.freeze([
   'MENTOR_APPLICATION_APPROVED',
   'MENTOR_APPLICATION_REJECTED',
   'MENTOR_APPLICATION_SUSPENDED',
+  'FEEDBACK_RECEIVED',
+  'ADMIN_ANNOUNCEMENT',
+  'RESOURCE_PUBLISHED',
+  'CONTENT_PUBLISHED',
 ]);
 
 export const NOTIFICATION_ENTITY_TYPES = Object.freeze([
@@ -20,6 +24,10 @@ export const NOTIFICATION_ENTITY_TYPES = Object.freeze([
   'MESSAGE',
   'GOAL',
   'MENTOR_APPLICATION',
+  'RESOURCE',
+  'CONTENT',
+  'FEEDBACK',
+  'REFLECTION',
 ]);
 
 const notificationSchema = new mongoose.Schema(

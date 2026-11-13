@@ -140,11 +140,14 @@ function RelationshipCard({
   );
 }
 
-export default function MyRelationshipsPage() {
+export default function MyRelationshipsPage({ pageTitle = 'My Relationships' }) {
   const { user } = useAuth();
   const [relationships, setRelationships] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [requestsLoading, setRequestsLoading] = useState(pageTitle === 'My Mentees');
+  const [requestsError, setRequestsError] = useState('');
   const [activatingIds, setActivatingIds] = useState(new Set());
   const [completingIds, setCompletingIds] = useState(new Set());
   const [archivingIds, setArchivingIds] = useState(new Set());
@@ -177,6 +180,29 @@ export default function MyRelationshipsPage() {
     load();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (pageTitle !== 'My Mentees') return undefined;
+    let active = true;
+
+    async function loadRequests() {
+      try {
+        const data = await mentorshipService.getMentorMentorshipRequests();
+        if (active) {
+          setPendingRequests(
+            (data.relationships || []).filter((relationship) => relationship.status === 'PENDING'),
+          );
+        }
+      } catch {
+        if (active) setRequestsError('Could not load pending requests.');
+      } finally {
+        if (active) setRequestsLoading(false);
+      }
+    }
+
+    loadRequests();
+    return () => { active = false; };
+  }, [pageTitle]);
 
   async function handleActivate(id) {
     setActivatingIds((prev) => new Set(prev).add(id));
@@ -248,9 +274,18 @@ export default function MyRelationshipsPage() {
       <header className="mentorship-page-header">
         <div>
           <span className="eyebrow">The Mentorship Academy</span>
-          <h1>My Relationships</h1>
-          <p>View and manage your mentorship relationships with mentees.</p>
+          <h1>{pageTitle}</h1>
+          <p>
+            {pageTitle === 'My Mentees'
+              ? 'View your active and past mentees and their mentorship status.'
+              : 'View and manage your mentorship relationships with mentees.'}
+          </p>
         </div>
+        {pageTitle === 'My Mentees' && (
+          <Link className="button button-secondary" to="/mentor/mentorship/requests">
+            Review Requests{pendingRequests.length ? ` (${pendingRequests.length})` : ''}
+          </Link>
+        )}
       </header>
 
       {error && (
@@ -261,7 +296,10 @@ export default function MyRelationshipsPage() {
 
       {!loading && !relationships.length && (
         <div className="empty-state">
-          <p>You don't have any mentorship relationships yet.</p>
+          <p>There are currently no active mentees.</p>
+          <Link className="button button-primary" to="/mentor/mentorship/requests">
+            Review incoming requests
+          </Link>
         </div>
       )}
 
@@ -279,6 +317,58 @@ export default function MyRelationshipsPage() {
           />
         ))}
       </div>
+
+      {pageTitle === 'My Mentees' && (
+        <section className="mentor-pending-mentees" aria-labelledby="mentor-pending-mentees-title">
+          <header className="mentorship-page-header">
+            <div>
+              <span className="eyebrow">Needs your attention</span>
+              <h2 id="mentor-pending-mentees-title">Pending requests</h2>
+            </div>
+            <Link className="button button-secondary" to="/mentor/mentorship/requests">
+              Open request workflow
+            </Link>
+          </header>
+          {requestsLoading ? (
+            <p className="mentorship-loading" role="status">Loading pending requests…</p>
+          ) : requestsError ? (
+            <p className="mentorship-message mentorship-error" role="alert">{requestsError}</p>
+          ) : pendingRequests.length ? (
+            <div className="relationship-list" role="list">
+              {pendingRequests.map((request) => (
+                <article className="relationship-card" key={request.id}>
+                  <div className="relationship-card-header">
+                    <div className="relationship-mentee-info">
+                      <div className="relationship-avatar placeholder" aria-hidden="true">
+                        {request.mentee?.firstName?.[0]}{request.mentee?.lastName?.[0]}
+                      </div>
+                      <div>
+                        <h3 className="relationship-mentee-name">
+                          {request.mentee?.firstName} {request.mentee?.lastName}
+                        </h3>
+                        <p className="relationship-mentee-email">Incoming mentorship request</p>
+                      </div>
+                    </div>
+                    <span className="relationship-status status-pending">Pending</span>
+                  </div>
+                  {request.requestMessage && (
+                    <p className="mentor-pending-request-message">{request.requestMessage}</p>
+                  )}
+                  <div className="relationship-actions">
+                    <Link className="button button-primary" to="/mentor/mentorship/requests">
+                      Review Request
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <p>No pending incoming requests.</p>
+            </div>
+          )}
+        </section>
+      )}
     </section>
   );
 }

@@ -21,6 +21,7 @@ import {
   getMatches,
   listAudit,
 } from '../controllers/adminController.js';
+import { broadcastAdminNotifications } from '../controllers/notificationController.js';
 
 const router = Router();
 
@@ -48,6 +49,8 @@ router.get('/relationships', asyncHandler(listRelationships));
 router.get('/relationships/:id', asyncHandler(getRelationship));
 
 router.get('/matches/:menteeId', asyncHandler(getMatches));
+
+router.post('/notifications/broadcast', asyncHandler(broadcastAdminNotifications));
 
 router.get('/audit', asyncHandler(listAudit));
 

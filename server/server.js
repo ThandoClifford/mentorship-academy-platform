@@ -17,6 +17,13 @@ import menteeMatchingRoutes from './routes/menteeMatchingRoutes.js';
 import menteeMessageRoutes from './routes/menteeMessageRoutes.js';
 import mentorMessageRoutes from './routes/mentorMessageRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import resourceRoutes, { adminRouter as adminResourceRouter } from './routes/resourceRoutes.js';
+import feedbackRoutes, { adminRouter as adminFeedbackRouter } from './routes/feedbackRoutes.js';
+import reflectionRoutes, {
+  adminRouter as adminReflectionRouter,
+  mentorRouter as mentorReflectionRoutes,
+} from './routes/reflectionRoutes.js';
+import contentRoutes, { adminRouter as adminContentRouter } from './routes/contentRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
 const app = express();
@@ -37,8 +44,17 @@ app.use('/api/mentee/mentorship/:relationshipId/messages', menteeMessageRoutes);
 app.use('/api/mentor/mentorship/:relationshipId/messages', mentorMessageRoutes);
 app.use('/api/mentee', menteeMatchingRoutes);
 app.use('/api/mentors', mentorPublicRoutes);
-app.use('/api', mentorApplicationRoutes);
+app.use('/api/mentor-applications', mentorApplicationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/admin/resources', adminResourceRouter);
+app.use('/api/mentorship/:relationshipId/feedback', feedbackRoutes);
+app.use('/api/admin/feedback', adminFeedbackRouter);
+app.use('/api/mentee/mentorship/:relationshipId/reflections', reflectionRoutes);
+app.use('/api/mentor/mentorship/:relationshipId/reflections', mentorReflectionRoutes);
+app.use('/api/admin/reflections', adminReflectionRouter);
+app.use('/api/content', contentRoutes);
+app.use('/api/admin/content', adminContentRouter);
 app.use('/api/admin', adminRoutes);
 app.use((request, response) => {
   response.status(404).json({ message: 'Route not found.' });

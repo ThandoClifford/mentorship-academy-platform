@@ -63,8 +63,8 @@ export async function getRelationship(request, response) {
   const relationship = await getRelationshipById(id);
 
   const isParticipant =
-    relationship.mentee?.id === String(userId) ||
-    relationship.mentor?.id === String(userId);
+    String(relationship.mentee?.id) === String(userId) ||
+    String(relationship.mentor?.id) === String(userId);
 
   if (!isParticipant && getUserRole(request) !== 'ADMIN') {
     throw new ApiError(403, 'You are not authorized to view this relationship.');

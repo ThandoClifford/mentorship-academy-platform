@@ -8,7 +8,9 @@ import HomePage from './pages/public/HomePage.jsx';
 import LoginPage from './pages/public/LoginPage.jsx';
 import RegisterPage from './pages/public/RegisterPage.jsx';
 import MenteeProfilePage from './pages/mentee/ProfilePage.jsx';
+import MenteeDashboardPage from './pages/mentee/MenteeDashboardPage.jsx';
 import MentorProfilePage from './pages/mentor/ProfilePage.jsx';
+import MentorDashboardPage from './pages/mentor/MentorDashboardPage.jsx';
 import MenteeRequestMentorPage from './pages/mentee/mentorship/RequestMentorPage.jsx';
 import MenteeRequestMentorDetailPage from './pages/mentee/mentorship/RequestMentorDetailPage.jsx';
 import MenteeMyRequestsPage from './pages/mentee/mentorship/MyRequestsPage.jsx';
@@ -24,6 +26,7 @@ import MenteeProgressPage from './pages/mentee/goals/MenteeProgressPage.jsx';
 import MentorGoalsPage from './pages/mentor/goals/MentorGoalsPage.jsx';
 import MentorGoalDetailPage from './pages/mentor/goals/MentorGoalDetailPage.jsx';
 import MenteeMessagesPage from './pages/mentee/messages/MessagesPage.jsx';
+import MessagesInboxPage from './pages/shared/MessagesInboxPage.jsx';
 import MentorMessagesPage from './pages/mentor/messages/MessagesPage.jsx';
 import { publicRoutes, workspaceRoutes } from './routes.js';
 
@@ -82,6 +85,10 @@ export default function App() {
               element={
                 page.path === 'profile' && workspace.role === 'Mentee' ? (
                   <MenteeProfilePage />
+                ) : !page.path && workspace.role === 'Mentee' ? (
+                  <MenteeDashboardPage />
+                ) : !page.path && workspace.role === 'Mentor' ? (
+                  <MentorDashboardPage />
                 ) : page.path === 'profile' && workspace.role === 'Mentor' ? (
                   <MentorProfilePage />
                 ) : page.path === 'mentorship/request' && workspace.role === 'Mentee' ? (
@@ -96,6 +103,12 @@ export default function App() {
                   <MenteeRelationshipDetailPage />
                 ) : page.path === 'mentorship/relationships/:id/messages' && workspace.role === 'Mentee' ? (
                   <MenteeMessagesPage />
+                ) : page.path === 'messages' && workspace.role === 'Mentee' ? (
+                  <MessagesInboxPage role="MENTEE" />
+                ) : page.path === 'messages' && workspace.role === 'Mentor' ? (
+                  <MessagesInboxPage role="MENTOR" />
+                ) : page.path === 'mentor' && workspace.role === 'Mentee' ? (
+                  <MenteeMyRelationshipsPage />
                 ) : page.path === 'goals' && workspace.role === 'Mentee' ? (
                   <MenteeGoalsPage />
                 ) : page.path === 'goals/:relationshipId/:goalId' && workspace.role === 'Mentee' ? (
@@ -106,6 +119,8 @@ export default function App() {
                   <MenteeMatchPage />
                 ) : page.path === 'mentorship/requests' && workspace.role === 'Mentor' ? (
                   <MentorIncomingRequestsPage />
+                ) : page.path === 'mentees' && workspace.role === 'Mentor' ? (
+                  <MentorMyRelationshipsPage pageTitle="My Mentees" />
                 ) : page.path === 'mentorship/relationships' && workspace.role === 'Mentor' ? (
                   <MentorMyRelationshipsPage />
                 ) : page.path === 'mentorship/relationships/:id' && workspace.role === 'Mentor' ? (

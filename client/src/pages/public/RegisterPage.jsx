@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 export default function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -47,7 +48,12 @@ export default function RegisterPage() {
       });
       navigate('/login', {
         replace: true,
-        state: { message: 'Your account is ready. Please log in.' },
+        state: {
+          ...location.state,
+          journey: location.state?.journey || 'mentee',
+          newlyRegistered: true,
+          message: 'Your account is ready. Please log in.',
+        },
       });
     } catch (requestError) {
       setError(
@@ -141,7 +147,7 @@ export default function RegisterPage() {
           </button>
         </form>
         <p className="auth-switch">
-          Already registered? <Link to="/login">Log in</Link>
+          Already registered? <Link to="/login" state={location.state}>Log in</Link>
         </p>
       </div>
     </section>

@@ -67,6 +67,48 @@ export const workspaceRoutes = [
     role: 'Mentee',
     basePath: '/mentee',
     description: 'Your mentorship journey starts here.',
+    navigation: [
+      {
+        label: 'WORKSPACE',
+        items: [
+          { path: '', label: 'Dashboard', icon: 'dashboard', exact: true },
+          { path: 'profile', label: 'My Profile', icon: 'profile' },
+          {
+            path: 'match',
+            label: 'Find a Mentor',
+            icon: 'search',
+            activePaths: ['match', 'mentorship/request', 'mentorship/request/:id'],
+          },
+          {
+            path: 'mentor',
+            label: 'My Mentor',
+            icon: 'mentor',
+            activePaths: ['mentor', 'mentorship/relationships', 'mentorship/relationships/:id'],
+            exactActivePaths: ['mentorship/relationships', 'mentorship/relationships/:id'],
+          },
+          {
+            path: 'goals',
+            label: 'Goals & Progress',
+            icon: 'goals',
+            activePaths: ['goals', 'goals/:relationshipId/:goalId', 'progress'],
+          },
+          {
+            path: 'messages',
+            label: 'Messages',
+            icon: 'messages',
+            activePaths: ['messages', 'mentorship/relationships/:id/messages'],
+          },
+          { path: 'resources', label: 'Resources', icon: 'resources' },
+        ],
+      },
+      {
+        label: 'ACCOUNT',
+        items: [
+          { path: 'feedback', label: 'Feedback', icon: 'feedback' },
+          { path: 'settings', label: 'Settings', icon: 'settings' },
+        ],
+      },
+    ],
     pages: [
       {
         path: '',
@@ -116,7 +158,13 @@ export const workspaceRoutes = [
       {
         path: 'mentor',
         title: 'My Mentor',
-        description: 'Your mentor connection and shared details will appear here.',
+        description: 'View and manage your mentorship relationships.',
+      },
+      {
+        path: 'messages',
+        navLabel: 'Messages',
+        title: 'Messages',
+        description: 'Continue conversations with your mentors.',
       },
       {
         path: 'goals',
@@ -166,6 +214,45 @@ export const workspaceRoutes = [
     role: 'Mentor',
     basePath: '/mentor',
     description: 'Your mentoring workspace starts here.',
+    navigation: [
+      {
+        label: 'WORKSPACE',
+        items: [
+          { path: '', label: 'Dashboard', icon: 'dashboard', exact: true },
+          { path: 'profile', label: 'My Profile', icon: 'profile' },
+          { path: 'matches', label: 'Mentee Matches', icon: 'search' },
+          {
+            path: 'mentees',
+            label: 'My Mentees',
+            icon: 'mentor',
+            activePaths: ['mentees', 'mentorship/relationships', 'mentorship/relationships/:id'],
+            exactActivePaths: ['mentorship/relationships', 'mentorship/relationships/:id'],
+          },
+          {
+            path: 'goals',
+            label: 'Goals & Progress',
+            icon: 'goals',
+            activePaths: ['goals', 'goals/:relationshipId/:goalId'],
+          },
+          {
+            path: 'messages',
+            label: 'Messages',
+            icon: 'messages',
+            activePaths: ['messages', 'mentorship/relationships/:id/messages'],
+          },
+          { path: 'resources', label: 'Resources', icon: 'resources' },
+          { path: 'mentorship/requests', label: 'Incoming Requests', icon: 'requests' },
+        ],
+      },
+      {
+        label: 'ACCOUNT',
+        items: [
+          { path: 'feedback', label: 'Feedback', icon: 'feedback' },
+          { path: 'reports', label: 'Reports', icon: 'reports' },
+          { path: 'settings', label: 'Settings', icon: 'settings' },
+        ],
+      },
+    ],
     pages: [
       {
         path: '',
@@ -227,6 +314,12 @@ export const workspaceRoutes = [
         description: 'View and send messages with your mentee for this relationship.',
       },
       {
+        path: 'messages',
+        navLabel: 'Messages',
+        title: 'Messages',
+        description: 'Continue conversations with your mentees.',
+      },
+      {
         path: 'resources',
         title: 'Resources',
         description: 'Explore resources to support your mentoring practice.',
@@ -252,6 +345,27 @@ export const workspaceRoutes = [
     role: 'Admin',
     basePath: '/admin',
     description: 'The Academy administration workspace starts here.',
+    navigation: [
+      {
+        label: 'ADMINISTRATION',
+        items: [
+          { path: '', label: 'Dashboard', icon: 'dashboard', exact: true },
+          { path: 'users', label: 'Users', icon: 'users' },
+          { path: 'mentor-applications', label: 'Mentor Applications', icon: 'applications' },
+          { path: 'mentors', label: 'Mentors', icon: 'mentor' },
+          { path: 'mentees', label: 'Mentees', icon: 'profile' },
+          { path: 'matches', label: 'AI Matches', icon: 'search' },
+          { path: 'relationships', label: 'Relationships', icon: 'relationships' },
+          { path: 'content', label: 'Content', icon: 'content' },
+          { path: 'resources', label: 'Resources', icon: 'resources' },
+          { path: 'feedback', label: 'Feedback', icon: 'feedback' },
+          { path: 'notifications', label: 'Notifications', icon: 'notifications' },
+          { path: 'reports', label: 'Reports', icon: 'reports' },
+          { path: 'audit', label: 'Activity Log', icon: 'audit' },
+          { path: 'settings', label: 'Settings', icon: 'settings' },
+        ],
+      },
+    ],
     pages: [
       {
         path: '',

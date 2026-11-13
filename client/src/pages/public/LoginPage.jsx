@@ -25,7 +25,18 @@ export default function LoginPage() {
 
     try {
       const user = await login({ email: email.trim(), password });
-      navigate(roleHomePaths[user.role] || '/', { replace: true });
+      if (user.role === 'MENTEE' && location.state?.journey === 'mentor') {
+        navigate('/', {
+          replace: true,
+          state: { journeyAction: 'mentor-application' },
+        });
+      } else if (user.role === 'MENTEE' && location.state?.journey === 'mentee') {
+        navigate(location.state.newlyRegistered ? '/mentee/profile' : '/mentee', {
+          replace: true,
+        });
+      } else {
+        navigate(roleHomePaths[user.role] || '/', { replace: true });
+      }
     } catch (requestError) {
       setError(
         requestError.response?.data?.message ||
@@ -85,7 +96,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="auth-switch">
-          New to the Academy? <Link to="/register">Create an account</Link>
+          New to the Academy? <Link to="/register" state={location.state}>Create an account</Link>
         </p>
       </div>
     </section>

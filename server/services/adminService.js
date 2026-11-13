@@ -4,7 +4,11 @@ import MenteeProfile from '../models/MenteeProfile.js';
 import MentorProfile, { MENTOR_PROFILE_STATUSES } from '../models/MentorProfile.js';
 import MentorApplication from '../models/MentorApplication.js';
 import MentorshipRelationship from '../models/MentorshipRelationship.js';
-import Goal from '../models/Goal.js';
+import Goal, { GOAL_STATUSES } from '../models/Goal.js';
+import Message from '../models/Message.js';
+import MentorshipFeedback from '../models/MentorshipFeedback.js';
+import Resource from '../models/Resource.js';
+import Content from '../models/Content.js';
 import AuditLog from '../models/AuditLog.js';
 import ApiError from '../utils/ApiError.js';
 import { logAdminAction } from './auditService.js';
@@ -103,11 +107,20 @@ export async function getAdminDashboard() {
     declinedMentorships,
     totalGoals,
     completedGoals,
+    activeGoals,
+    totalMessages,
+    feedbackCount,
+    averageFeedbackRating,
+    resourceCount,
+    publishedContentCount,
+    goalProgressData,
+    totalMentorApplications,
+    approvedMentorApplications,
   ] = await Promise.all([
     User.countDocuments({}),
     User.countDocuments({ role: USER_ROLES.MENTEE }),
     User.countDocuments({ role: USER_ROLES.MENTOR }),
-    MentorProfile.countDocuments({ status: 'PENDING' }),
+    MentorApplication.countDocuments({ status: 'PENDING' }),
     MentorProfile.countDocuments({ status: 'APPROVED' }),
     MentorProfile.countDocuments({ status: 'REJECTED' }),
     MentorProfile.countDocuments({ status: 'SUSPENDED' }),
@@ -119,7 +132,29 @@ export async function getAdminDashboard() {
     MentorshipRelationship.countDocuments({ status: 'DECLINED' }),
     Goal.countDocuments({}),
     Goal.countDocuments({ status: 'COMPLETED' }),
+    Goal.countDocuments({ status: { $in: GOAL_STATUSES.filter((status) => status === 'ACTIVE') } }),
+    Message.countDocuments({}),
+    MentorshipFeedback.countDocuments({}),
+    MentorshipFeedback.aggregate([
+      { $group: { _id: null, avgRating: { $avg: '$rating' } } },
+    ]),
+    Resource.countDocuments({}),
+    Content.countDocuments({ published: true }),
+    Goal.aggregate([
+      { $group: { _id: null, averageProgress: { $avg: '$progress' } } },
+    ]),
+    MentorApplication.countDocuments({}),
+    MentorApplication.countDocuments({ status: 'APPROVED' }),
   ]);
+
+  const averageGoalProgress = goalProgressData?.[0]?.averageProgress ?? 0;
+  const averageFeedbackScore = averageFeedbackRating?.[0]?.avgRating ?? 0;
+  const mentorAcceptanceRate = acceptedMentorships + declinedMentorships === 0
+    ? 0
+    : ((acceptedMentorships / (acceptedMentorships + declinedMentorships)) * 100);
+  const mentorApplicationApprovalRate = totalMentorApplications === 0
+    ? 0
+    : ((approvedMentorApplications / totalMentorApplications) * 100);
 
   return {
     totalUsers,
@@ -137,6 +172,15 @@ export async function getAdminDashboard() {
     declinedMentorships,
     totalGoals,
     completedGoals,
+    activeGoals,
+    averageGoalProgress,
+    mentorAcceptanceRate,
+    mentorApplicationApprovalRate,
+    totalMessages,
+    feedbackCount,
+    averageFeedbackRating: averageFeedbackScore,
+    resourceCount,
+    publishedContentCount,
   };
 }
 
