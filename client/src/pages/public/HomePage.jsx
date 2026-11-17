@@ -1,11 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import './HomePage.css';
-import {
-  submitMentorApplication,
-  getMyMentorApplication,
-} from '../../services/mentorApplicationService.js';
 
 const STORIES = [
   {
@@ -37,94 +33,17 @@ const STORIES = [
   },
 ];
 
-const MENTORSHIP_STYLES = [
-  'STRUCTURED',
-  'FLEXIBLE',
-  'GOAL_ORIENTED',
-  'CONVERSATIONAL',
-  'MIXED',
-];
-
-const STATUS_LABELS = {
-  PENDING: 'Application under review',
-  APPROVED: 'Approved — you can now mentor',
-  REJECTED: 'Application not approved',
-  SUSPENDED: 'Account suspended',
-};
-
 export default function HomePage() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
-  const [applyOpen, setApplyOpen] = useState(false);
   const [storyOpen, setStoryOpen] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
-  const [application, setApplication] = useState(null);
-  const [appLoading, setAppLoading] = useState(false);
-  const [appChecked, setAppChecked] = useState(false);
-  const [appError, setAppError] = useState(null);
-  const [appForm, setAppForm] = useState({
-    jobTitle: '',
-    company: '',
-    industry: '',
-    yearsOfExperience: '',
-    professionalBackground: '',
-    expertise: '',
-    skills: '',
-    specialisations: '',
-    experienceAreas: '',
-    mentorshipAreas: '',
-    mentorshipStyle: '',
-    languages: '',
-    availabilityDays: '',
-    availabilityTimeZone: '',
-    motivation: '',
-  });
-  const [submitting, setSubmitting] = useState(false);
 
   const openStory = (i) => {
     setStoryIndex(i);
     setStoryOpen(true);
   };
-
-  const loadApplication = useCallback(async () => {
-    if (!isAuthenticated) {
-      setApplication(null);
-      setAppChecked(true);
-      return;
-    }
-
-    setAppLoading(true);
-    setAppError(null);
-    try {
-      const data = await getMyMentorApplication();
-      setApplication(data?.application || null);
-    } catch (error) {
-      setAppError(error.response?.data?.message || 'Could not load your mentor application status.');
-    } finally {
-      setAppLoading(false);
-      setAppChecked(true);
-    }
-  }, [isAuthenticated]);
-
-  useEffect(() => {
-    if (authLoading) return;
-    setAppChecked(false);
-    loadApplication();
-  }, [authLoading, loadApplication]);
-
-  useEffect(() => {
-    if (
-      authLoading ||
-      !isAuthenticated ||
-      !appChecked ||
-      location.state?.journeyAction !== 'mentor-application'
-    ) return;
-
-    setApplyOpen(true);
-    navigate(location.pathname, { replace: true, state: null });
-  }, [appChecked, authLoading, isAuthenticated, location.pathname, location.state, navigate]);
 
   function handleFindMentor() {
     if (!isAuthenticated) {
@@ -140,109 +59,9 @@ export default function HomePage() {
     navigate(roleHome[user?.role] || '/');
   }
 
-  const handleApplyClick = () => {
-    if (!isAuthenticated) {
-      navigate('/login', { state: { journey: 'mentor' } });
-      return;
-    }
-    setApplyOpen(true);
-  };
-
-  const handleApplySubmit = async (e) => {
-    e.preventDefault();
-    setAppError(null);
-    setSubmitting(true);
-    try {
-      const years = appForm.yearsOfExperience.trim();
-      const payload = {
-        jobTitle: appForm.jobTitle.trim(),
-        company: appForm.company.trim(),
-        industry: appForm.industry.trim(),
-        professionalBackground: appForm.professionalBackground.trim(),
-        motivation: appForm.motivation.trim(),
-        expertise: appForm.expertise
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        skills: appForm.skills
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        specialisations: appForm.specialisations
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        experienceAreas: appForm.experienceAreas
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        mentorshipAreas: appForm.mentorshipAreas
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        mentorshipStyle: appForm.mentorshipStyle || '',
-        languages: appForm.languages
-          .split(',')
-          .map((s) => s.trim())
-          .filter(Boolean),
-        yearsOfExperience: years !== '' ? Number(years) : null,
-      };
-      const availabilityDays = appForm.availabilityDays
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      const availabilityTimeZone = appForm.availabilityTimeZone.trim();
-      if (availabilityDays.length > 0 || availabilityTimeZone !== '') {
-        payload.availability = {
-          days: availabilityDays,
-          timeZone: availabilityTimeZone,
-        };
-      }
-
-      const data = await submitMentorApplication(payload);
-      setApplication(data.application);
-      setAppForm({
-        jobTitle: '',
-        company: '',
-        industry: '',
-        yearsOfExperience: '',
-        professionalBackground: '',
-        expertise: '',
-        skills: '',
-        specialisations: '',
-        experienceAreas: '',
-        mentorshipAreas: '',
-        mentorshipStyle: '',
-        languages: '',
-        availabilityDays: '',
-        availabilityTimeZone: '',
-        motivation: '',
-      });
-      setApplyOpen(false);
-    } catch (err) {
-      const status = err.response?.status;
-      if (status === 401) {
-        navigate('/login', { state: { journey: 'mentor' } });
-        return;
-      }
-      let message = err.message || 'Could not submit application. Please try again.';
-      if (err.response?.data?.message) {
-        message = err.response.data.message;
-      }
-      setAppError(message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  async function handleApplicationRetry() {
-    setAppChecked(false);
-    await loadApplication();
+  function handleApplyClick() {
+    navigate('/mentor/register');
   }
-
-  const statusText = application
-    ? STATUS_LABELS[application.status] || application.status
-    : 'Not submitted';
 
   return (
     <div className="landing-page">
@@ -548,214 +367,6 @@ export default function HomePage() {
       </main>
 
       <div
-        className={`modal${applyOpen ? ' show' : ''}`}
-        id="apply"
-      >
-        <div className="modalbox">
-          <button className="close" onClick={() => setApplyOpen(false)}>
-            &times;
-          </button>
-          {appLoading || !appChecked ? (
-            <p role="status">Checking your application status…</p>
-          ) : appError ? (
-            <div>
-              <div className="eyebrow">Mentor application</div>
-              <h2>We couldn’t check your application</h2>
-              <p role="alert">{appError}</p>
-              <button className="btn primary" onClick={handleApplicationRetry} type="button">
-                Try again
-              </button>
-            </div>
-          ) : application ? (
-            <div>
-              <div className="eyebrow">Application status</div>
-              <h2>{statusText}</h2>
-              {application.status === 'PENDING' && (
-                <p style={{ color: 'var(--muted)', lineHeight: 1.6, margin: '10px 0 0' }}>
-                  Your mentor application has been submitted and is pending
-                  admin review. You will be notified once a decision is made.
-                </p>
-              )}
-              {application.status === 'APPROVED' && (
-                <p style={{ color: 'var(--muted)', lineHeight: 1.6, margin: '10px 0 0' }}>
-                  Congratulations! Your mentor application has been approved.
-                  You can now participate in mentorship as a mentor.
-                </p>
-              )}
-              {application.status === 'REJECTED' && (
-                <>
-                  <p style={{ color: 'var(--muted)', lineHeight: 1.6, margin: '10px 0 0' }}>
-                    Your mentor application was not approved at this time.
-                  </p>
-                  {application.adminNotes && (
-                    <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 8 }}>
-                      <strong>Admin notes:</strong> {application.adminNotes}
-                    </p>
-                  )}
-                  <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 12 }}>
-                    You may submit a new application if your circumstances
-                    change.
-                  </p>
-                </>
-              )}
-              {application.status === 'SUSPENDED' && (
-                <p style={{ color: 'var(--muted)', lineHeight: 1.6, margin: '10px 0 0' }}>
-                  Your mentor account has been suspended. Contact the academy
-                  for more information.
-                </p>
-              )}
-              <button
-                className="btn outline"
-                onClick={() => setApplyOpen(false)}
-                style={{ marginTop: 18 }}
-              >
-                Close
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleApplySubmit}>
-              <div className="eyebrow">Mentor application</div>
-              <h2>Apply to become a mentor</h2>
-              {appError && (
-                <p
-                  style={{
-                    color: '#962752',
-                    background: '#fff5f8',
-                    border: '1px solid #f0cbd9',
-                    padding: 10,
-                    borderRadius: 8,
-                    fontSize: 12,
-                    marginBottom: 14,
-                  }}
-                >
-                  {appError}
-                </p>
-              )}
-              <p style={{ color: 'var(--muted)', lineHeight: 1.6, margin: '0 0 20px' }}>
-                Tell us about your professional background and why you would
-                like to mentor through the Academy.
-              </p>
-              <label>Job title</label>
-              <input
-                placeholder="e.g. Product Manager"
-                value={appForm.jobTitle}
-                required
-                onChange={(e) => setAppForm({ ...appForm, jobTitle: e.target.value })}
-              />
-              <label>Company</label>
-              <input
-                placeholder="e.g. Tech Solutions Inc."
-                value={appForm.company}
-                required
-                onChange={(e) => setAppForm({ ...appForm, company: e.target.value })}
-              />
-              <label>Industry</label>
-              <input
-                placeholder="e.g. Technology"
-                value={appForm.industry}
-                required
-                onChange={(e) => setAppForm({ ...appForm, industry: e.target.value })}
-              />
-              <label>Years of experience</label>
-              <input
-                type="number"
-                min="0"
-                max="80"
-                placeholder="0"
-                value={appForm.yearsOfExperience}
-                onChange={(e) => setAppForm({ ...appForm, yearsOfExperience: e.target.value })}
-              />
-              <label>Professional background</label>
-              <textarea
-                placeholder="Summarise your professional experience and areas of expertise."
-                value={appForm.professionalBackground}
-                required
-                onChange={(e) =>
-                  setAppForm({ ...appForm, professionalBackground: e.target.value })
-                }
-                rows={3}
-              />
-              <label>Expertise (comma-separated)</label>
-              <input
-                placeholder="e.g. Leadership, Strategy, Coaching"
-                value={appForm.expertise}
-                onChange={(e) => setAppForm({ ...appForm, expertise: e.target.value })}
-              />
-              <label>Skills (comma-separated)</label>
-              <input
-                placeholder="e.g. Public speaking, Project management"
-                value={appForm.skills}
-                onChange={(e) => setAppForm({ ...appForm, skills: e.target.value })}
-              />
-              <label>Specialisations (comma-separated)</label>
-              <input
-                placeholder="e.g. Executive coaching, Digital transformation"
-                value={appForm.specialisations}
-                onChange={(e) => setAppForm({ ...appForm, specialisations: e.target.value })}
-              />
-              <label>Experience areas (comma-separated)</label>
-              <input
-                placeholder="e.g. Startups, Enterprise, Non-profit"
-                value={appForm.experienceAreas}
-                onChange={(e) => setAppForm({ ...appForm, experienceAreas: e.target.value })}
-              />
-              <label>Mentorship areas (comma-separated)</label>
-              <input
-                placeholder="e.g. Career growth, Leadership, Entrepreneurship"
-                value={appForm.mentorshipAreas}
-                onChange={(e) => setAppForm({ ...appForm, mentorshipAreas: e.target.value })}
-              />
-              <label>Mentorship style</label>
-              <select
-                value={appForm.mentorshipStyle}
-                onChange={(e) => setAppForm({ ...appForm, mentorshipStyle: e.target.value })}
-              >
-                <option value="">Select a style</option>
-                {MENTORSHIP_STYLES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <label>Languages (comma-separated)</label>
-              <input
-                placeholder="e.g. English, Zulu, Xhosa"
-                value={appForm.languages}
-                onChange={(e) => setAppForm({ ...appForm, languages: e.target.value })}
-              />
-              <label>Availability days (comma-separated, optional)</label>
-              <input
-                placeholder="e.g. MONDAY, WEDNESDAY, FRIDAY"
-                value={appForm.availabilityDays}
-                onChange={(e) => setAppForm({ ...appForm, availabilityDays: e.target.value })}
-              />
-              <label>Time zone (optional)</label>
-              <input
-                placeholder="e.g. Africa/Johannesburg"
-                value={appForm.availabilityTimeZone}
-                onChange={(e) => setAppForm({ ...appForm, availabilityTimeZone: e.target.value })}
-              />
-              <label>Why would mentorship benefit you?</label>
-              <textarea
-                placeholder="Tell us about your goals and why you want to mentor."
-                value={appForm.motivation}
-                required
-                onChange={(e) => setAppForm({ ...appForm, motivation: e.target.value })}
-                rows={3}
-              />
-              <button
-                className="btn primary"
-                style={{ width: '100%', marginTop: 18 }}
-                disabled={submitting}
-              >
-                {submitting ? 'Submitting…' : 'Submit application &rarr;'}
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-
-      <div
         className={`story-modal${storyOpen ? ' show' : ''}`}
         id="storyModal"
       >
@@ -807,8 +418,8 @@ export default function HomePage() {
           </div>
           <div>
             <h4>Join</h4>
-            <a href="#apply" onClick={(e) => { e.preventDefault(); handleApplyClick(); }}>Apply Now</a>
-            <a href="#apply" onClick={(e) => { e.preventDefault(); handleApplyClick(); }}>Become a Mentor</a>
+            <Link to="/mentor/register">Apply Now</Link>
+            <Link to="/mentor/register">Become a Mentor</Link>
             <Link to="/register">Become a Mentee</Link>
           </div>
           <div>

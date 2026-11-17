@@ -26,10 +26,7 @@ export default function LoginPage() {
     try {
       const user = await login({ email: email.trim(), password });
       if (user.role === 'MENTEE' && location.state?.journey === 'mentor') {
-        navigate('/', {
-          replace: true,
-          state: { journeyAction: 'mentor-application' },
-        });
+        navigate('/mentor/register', { replace: true });
       } else if (user.role === 'MENTEE' && location.state?.journey === 'mentee') {
         navigate(location.state.newlyRegistered ? '/mentee/profile' : '/mentee', {
           replace: true,

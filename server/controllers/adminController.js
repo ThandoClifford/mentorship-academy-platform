@@ -84,6 +84,22 @@ export async function getRelationship(request, response) {
   response.status(200).json({ relationship });
 }
 
+export async function approveRelationship(request, response) {
+  const relationship = await adminService.approveRelationship(
+    request.user._id,
+    request.params.id,
+  );
+  response.status(200).json({ relationship });
+}
+
+export async function rejectRelationship(request, response) {
+  const relationship = await adminService.rejectRelationship(
+    request.user._id,
+    request.params.id,
+  );
+  response.status(200).json({ relationship });
+}
+
 export async function getMatches(request, response) {
   const result = await adminService.getMatchesForMenteeAdmin(request.params.menteeId);
   response.status(200).json(result);

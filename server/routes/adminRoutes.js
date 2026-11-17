@@ -18,16 +18,26 @@ import {
   getMentee,
   listRelationships,
   getRelationship,
+  approveRelationship,
+  rejectRelationship,
   getMatches,
   listAudit,
 } from '../controllers/adminController.js';
 import { broadcastAdminNotifications } from '../controllers/notificationController.js';
+import {
+  getSettings,
+  replaceSettings,
+  patchSettings,
+} from '../controllers/academySettingsController.js';
 
 const router = Router();
 
 router.use(requireAuth, requireRole('ADMIN'));
 
 router.get('/dashboard', asyncHandler(getDashboard));
+router.get('/settings', asyncHandler(getSettings));
+router.put('/settings', asyncHandler(replaceSettings));
+router.patch('/settings', asyncHandler(patchSettings));
 
 router.get('/users', asyncHandler(listUsers));
 router.get('/users/:id', asyncHandler(getUser));
@@ -46,6 +56,8 @@ router.get('/mentees', asyncHandler(listMentees));
 router.get('/mentees/:id', asyncHandler(getMentee));
 
 router.get('/relationships', asyncHandler(listRelationships));
+router.patch('/relationships/:id/approve', asyncHandler(approveRelationship));
+router.patch('/relationships/:id/reject', asyncHandler(rejectRelationship));
 router.get('/relationships/:id', asyncHandler(getRelationship));
 
 router.get('/matches/:menteeId', asyncHandler(getMatches));

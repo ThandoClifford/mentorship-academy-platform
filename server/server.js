@@ -25,6 +25,8 @@ import reflectionRoutes, {
 } from './routes/reflectionRoutes.js';
 import contentRoutes, { adminRouter as adminContentRouter } from './routes/contentRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import platformRoutes from './routes/platformRoutes.js';
+import maintenanceGuard from './middleware/maintenanceGuard.js';
 
 const app = express();
 const port = Number(process.env.PORT) || 5000;
@@ -33,6 +35,8 @@ const clientOrigin = process.env.CLIENT_URL || 'http://localhost:5173';
 app.use(cors({ origin: clientOrigin }));
 app.use(express.json({ limit: '10kb' }));
 app.use('/api', healthRoutes);
+app.use('/api', platformRoutes);
+app.use('/api', maintenanceGuard);
 app.use('/api/auth', authRoutes);
 app.use('/api/mentee', menteeProfileRoutes);
 app.use('/api/mentor', mentorProfileRoutes);

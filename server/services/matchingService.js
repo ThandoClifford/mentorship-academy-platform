@@ -3,6 +3,7 @@ import MentorProfile from '../models/MentorProfile.js';
 import User from '../models/User.js';
 import MentorshipRelationship from '../models/MentorshipRelationship.js';
 import ApiError from '../utils/ApiError.js';
+import { getAcademySettings } from './academySettingsService.js';
 
 const CAREER_STAGE_VALUES = {
   STUDENT: 0,
@@ -255,6 +256,11 @@ function generateExplanations(menteeProfile, mentorProfile, scores) {
 }
 
 export async function getMatchesForMentee(menteeId) {
+  const settings = await getAcademySettings();
+  if (!settings.aiMatchmakingEnabled) {
+    throw new ApiError(403, 'AI matchmaking is currently disabled.');
+  }
+
   if (!menteeId) {
     throw new ApiError(400, 'Mentee ID is required.');
   }
@@ -346,14 +352,17 @@ export async function getMatchesForMentee(menteeId) {
       };
     })
     .filter(Boolean)
+    .filter((match) => match.compatibilityScore >= settings.minimumMatchScore)
     .sort((a, b) => b.compatibilityScore - a.compatibilityScore);
 
   return {
-    matches,
+    matches: matches.slice(0, settings.maximumSuggestedMentors),
     totalCandidates: matches.length,
     filtersApplied: {
       status: 'APPROVED',
       isActive: true,
+      minimumMatchScore: settings.minimumMatchScore,
+      maximumSuggestedMentors: settings.maximumSuggestedMentors,
     },
   };
 }

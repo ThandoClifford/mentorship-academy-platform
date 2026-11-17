@@ -46,6 +46,11 @@ export const publicRoutes = [
       'Share your experience and help someone else grow through mentorship.',
   },
   {
+    path: 'mentor/register',
+    title: 'Become a Mentor',
+    description: 'Share your experience and help the next generation grow.',
+  },
+  {
     path: 'become-a-mentee',
     title: 'Become a Mentee',
     description: 'Take the next step in your mentorship journey.',
@@ -360,6 +365,7 @@ export const workspaceRoutes = [
           { path: 'resources', label: 'Resources', icon: 'resources' },
           { path: 'feedback', label: 'Feedback', icon: 'feedback' },
           { path: 'notifications', label: 'Notifications', icon: 'notifications' },
+          { path: 'analytics', label: 'Analytics', icon: 'reports' },
           { path: 'reports', label: 'Reports', icon: 'reports' },
           { path: 'audit', label: 'Activity Log', icon: 'audit' },
           { path: 'settings', label: 'Settings', icon: 'settings' },
@@ -432,6 +438,11 @@ export const workspaceRoutes = [
         path: 'audit',
         title: 'Audit Log',
         description: 'Audit history will be available in a later phase.',
+      },
+      {
+        path: 'analytics',
+        title: 'Analytics',
+        description: 'Explore academy metrics from the administration dashboard.',
       },
       {
         path: 'settings',

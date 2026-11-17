@@ -23,18 +23,39 @@ import MentorRelationshipDetailPage from './pages/mentor/mentorship/Relationship
 import MenteeGoalsPage from './pages/mentee/goals/MenteeGoalsPage.jsx';
 import MenteeGoalDetailPage from './pages/mentee/goals/MenteeGoalDetailPage.jsx';
 import MenteeProgressPage from './pages/mentee/goals/MenteeProgressPage.jsx';
+import MenteeFeedbackPage from './pages/mentee/FeedbackPage.jsx';
 import MentorGoalsPage from './pages/mentor/goals/MentorGoalsPage.jsx';
 import MentorGoalDetailPage from './pages/mentor/goals/MentorGoalDetailPage.jsx';
 import MenteeMessagesPage from './pages/mentee/messages/MessagesPage.jsx';
 import MessagesInboxPage from './pages/shared/MessagesInboxPage.jsx';
 import MentorMessagesPage from './pages/mentor/messages/MessagesPage.jsx';
+import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx';
+import AdminMentorApplicationsPage from './pages/admin/AdminMentorApplicationsPage.jsx';
+import AdminUsersPage from './pages/admin/AdminUsersPage.jsx';
+import AdminRelationshipsPage from './pages/admin/AdminRelationshipsPage.jsx';
+import AdminAuditPage from './pages/admin/AdminAuditPage.jsx';
+import AdminMatchesPage from './pages/admin/AdminMatchesPage.jsx';
+import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage.jsx';
+import AdminResourcesPage from './pages/admin/AdminResourcesPage.jsx';
+import AdminContentPage from './pages/admin/AdminContentPage.jsx';
+import ResourceLibraryPage from './pages/shared/ResourceLibraryPage.jsx';
+import AdminMentorsPage from './pages/admin/AdminMentorsPage.jsx';
+import AdminMenteesPage from './pages/admin/AdminMenteesPage.jsx';
+import AdminFeedbackPage from './pages/admin/AdminFeedbackPage.jsx';
+import AdminNotificationsPage from './pages/admin/AdminNotificationsPage.jsx';
+import AdminReportsPage from './pages/admin/AdminReportsPage.jsx';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage.jsx';
+import PlatformStatusGate from './components/PlatformStatusGate.jsx';
+import MentorRegistrationPage from './pages/mentor/MentorRegistrationPage.jsx';
 import { publicRoutes, workspaceRoutes } from './routes.js';
 
 export default function App() {
   return (
+    <PlatformStatusGate>
     <Routes>
       <Route element={<PublicLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="mentor/register" element={<MentorRegistrationPage />} />
         <Route
           path="login"
           element={
@@ -52,7 +73,7 @@ export default function App() {
           }
         />
         {publicRoutes
-          .filter((page) => !['login', 'register'].includes(page.path))
+          .filter((page) => !['login', 'register', 'mentor/register'].includes(page.path))
           .map((page) => (
             <Route
               key={page.path}
@@ -115,6 +136,8 @@ export default function App() {
                   <MenteeGoalDetailPage />
                 ) : page.path === 'progress' && workspace.role === 'Mentee' ? (
                   <MenteeProgressPage />
+                ) : page.path === 'feedback' && workspace.role === 'Mentee' ? (
+                  <MenteeFeedbackPage />
                 ) : page.path === 'match' && workspace.role === 'Mentee' ? (
                   <MenteeMatchPage />
                 ) : page.path === 'mentorship/requests' && workspace.role === 'Mentor' ? (
@@ -131,6 +154,40 @@ export default function App() {
                   <MentorGoalsPage />
                 ) : page.path === 'goals/:relationshipId/:goalId' && workspace.role === 'Mentor' ? (
                   <MentorGoalDetailPage />
+                ) : page.path === 'resources' && workspace.role === 'Mentee' ? (
+                  <ResourceLibraryPage role="MENTEE" />
+                ) : page.path === 'resources' && workspace.role === 'Mentor' ? (
+                  <ResourceLibraryPage role="MENTOR" />
+                ) : !page.path && workspace.role === 'Admin' ? (
+                  <AdminDashboardPage />
+                ) : page.path === 'users' && workspace.role === 'Admin' ? (
+                  <AdminUsersPage />
+                ) : page.path === 'mentor-applications' && workspace.role === 'Admin' ? (
+                  <AdminMentorApplicationsPage />
+                ) : page.path === 'relationships' && workspace.role === 'Admin' ? (
+                  <AdminRelationshipsPage />
+                ) : page.path === 'audit' && workspace.role === 'Admin' ? (
+                  <AdminAuditPage />
+                ) : page.path === 'matches' && workspace.role === 'Admin' ? (
+                  <AdminMatchesPage />
+                ) : page.path === 'analytics' && workspace.role === 'Admin' ? (
+                  <AdminAnalyticsPage />
+                ) : page.path === 'resources' && workspace.role === 'Admin' ? (
+                  <AdminResourcesPage />
+                ) : page.path === 'content' && workspace.role === 'Admin' ? (
+                  <AdminContentPage />
+                ) : page.path === 'mentors' && workspace.role === 'Admin' ? (
+                  <AdminMentorsPage />
+                ) : page.path === 'mentees' && workspace.role === 'Admin' ? (
+                  <AdminMenteesPage />
+                ) : page.path === 'feedback' && workspace.role === 'Admin' ? (
+                  <AdminFeedbackPage />
+                ) : page.path === 'notifications' && workspace.role === 'Admin' ? (
+                  <AdminNotificationsPage />
+                ) : page.path === 'reports' && workspace.role === 'Admin' ? (
+                  <AdminReportsPage />
+                ) : page.path === 'settings' && workspace.role === 'Admin' ? (
+                  <AdminSettingsPage />
                 ) : (
                   <PagePlaceholder
                     {...page}
@@ -149,5 +206,6 @@ export default function App() {
       ))}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </PlatformStatusGate>
   );
 }

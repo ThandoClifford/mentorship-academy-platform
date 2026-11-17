@@ -6,6 +6,7 @@ import AuditLog from '../models/AuditLog.js';
 import ApiError from '../utils/ApiError.js';
 import { logAdminAction } from './auditService.js';
 import { createNotification } from './notificationService.js';
+import { getAcademySettings } from './academySettingsService.js';
 
 const MENTORSHIP_STATUSES = ['PENDING', 'ACCEPTED', 'ACTIVE', 'COMPLETED', 'ARCHIVED', 'DECLINED'];
 
@@ -166,6 +167,11 @@ function validateApplicationInput(data) {
 }
 
 export async function submitApplication(userId, data) {
+  const settings = await getAcademySettings();
+  if (!settings.allowMentorApplications) {
+    throw new ApiError(403, 'Mentor applications are currently closed.');
+  }
+
   if (!userId || !mongoose.isValidObjectId(userId)) {
     throw new ApiError(400, 'Invalid user.');
   }
@@ -256,20 +262,23 @@ export async function submitApplication(userId, data) {
     metadata: { userId: String(userId), jobTitle: data.jobTitle },
   });
 
-  try {
-    await createNotification({
-      recipient: userId,
-      type: 'MENTOR_APPLICATION_SUBMITTED',
-      title: 'Mentor application submitted',
-      message: 'Your mentor application has been received and is under review.',
-      relatedEntityType: 'MENTOR_APPLICATION',
-      relatedEntityId: application._id,
-    });
-  } catch {
-    // notification must not break submission
+  if (settings.requireAdminApprovalForMentors) {
+    try {
+      await createNotification({
+        recipient: userId,
+        type: 'MENTOR_APPLICATION_SUBMITTED',
+        title: 'Mentor application submitted',
+        message: 'Your mentor application has been received and is under review.',
+        relatedEntityType: 'MENTOR_APPLICATION',
+        relatedEntityId: application._id,
+      });
+    } catch {
+      // notification must not break submission
+    }
+    return toSafeApplication(application);
   }
 
-  return toSafeApplication(application);
+  return approveApplication(userId, application._id, '', { automated: true });
 }
 
 export async function getOwnApplication(userId) {
@@ -345,6 +354,7 @@ async function updateApplicationStatus(
   notificationTitle,
   notificationMessage,
   adminNotes,
+  { automated = false } = {},
 ) {
   requireValidObjectId(id, 'application ID');
   const application = await MentorApplication.findById(id);
@@ -370,6 +380,7 @@ async function updateApplicationStatus(
       status: newStatus,
       applicantUserId: String(application.user),
       adminNotes: application.adminNotes || '',
+      automated,
     },
   });
 
@@ -389,7 +400,7 @@ async function updateApplicationStatus(
   return toSafeApplication(application);
 }
 
-export async function approveApplication(actorId, id, adminNotes) {
+export async function approveApplication(actorId, id, adminNotes, options = {}) {
   const application = await updateApplicationStatus(
     actorId,
     id,
@@ -399,12 +410,14 @@ export async function approveApplication(actorId, id, adminNotes) {
     'Mentor application approved',
     'Your mentor application has been approved. You are now visible to mentees.',
     adminNotes,
+    options,
   );
 
   const user = await User.findById(application.user);
   if (!user) throw new ApiError(404, 'User not found.');
 
   if (user.role !== USER_ROLES.MENTOR) {
+    const previousRole = user.role;
     user.role = USER_ROLES.MENTOR;
     await user.save();
 
@@ -413,7 +426,7 @@ export async function approveApplication(actorId, id, adminNotes) {
       action: 'ROLE_CHANGED',
       entityType: 'USER',
       entityId: user._id,
-      metadata: { previousRole: user.role === USER_ROLES.MENTOR ? 'MENTEE' : user.role, newRole: 'MENTOR' },
+      metadata: { previousRole, newRole: 'MENTOR', automated: Boolean(options.automated) },
     });
   }
 

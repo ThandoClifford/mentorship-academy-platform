@@ -268,12 +268,23 @@ async function listMentorProfiles(query, { statusOverride } = {}) {
     MentorProfile.countDocuments(profileFilter),
   ]);
 
+  const applicationByUser = new Map();
+  if (profiles.length) {
+    const applications = await MentorApplication.find({
+      user: { $in: profiles.map((profile) => profile.user) },
+    }).select('user status').lean();
+    applications.forEach((application) => {
+      applicationByUser.set(String(application.user), application.status);
+    });
+  }
+
   const items = profiles.map((p) => {
     const u = userMap.get(String(p.user));
     return {
       id: String(p._id),
       user: u ? { id: u._id, firstName: u.firstName, lastName: u.lastName, email: u.email, isActive: u.isActive, createdAt: u.createdAt } : null,
       status: p.status,
+      applicationStatus: applicationByUser.get(String(p.user)) || 'UNKNOWN',
       jobTitle: p.jobTitle,
       company: p.company,
       industry: p.industry,
@@ -299,10 +310,12 @@ async function getMentorProfileDetail(id) {
   const profile = await MentorProfile.findById(id).lean();
   if (!profile) throw new ApiError(404, 'Mentor profile not found.');
   const user = await User.findById(profile.user).select('-password').lean();
+  const application = await MentorApplication.findOne({ user: profile.user }).select('status').lean();
   return {
     id: String(profile._id),
     user: user ? { id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, isActive: user.isActive, createdAt: user.createdAt } : null,
     status: profile.status,
+    applicationStatus: application?.status || 'UNKNOWN',
     jobTitle: profile.jobTitle,
     company: profile.company,
     industry: profile.industry,
@@ -610,7 +623,7 @@ export async function suspendMentorApplication(actorId, applicationId) {
 }
 
 export async function listMentors(query) {
-  return listMentorProfiles(query);
+  return listMentorProfiles(query, { statusOverride: 'APPROVED' });
 }
 
 export async function getMentorById(id) {
@@ -625,51 +638,45 @@ export async function listMentees(query) {
   if (query.status === 'active' || query.active === 'true') userFilter.isActive = true;
   if (query.status === 'inactive' || query.active === 'false') userFilter.isActive = false;
 
-  const matchingUsers = await User.find(userFilter)
-    .select('_id firstName lastName email isActive createdAt')
-    .lean();
-  const userIds = matchingUsers.map((u) => u._id);
-  const userMap = new Map(matchingUsers.map((u) => [String(u._id), u]));
-
-  const [profiles, total] = await Promise.all([
-    MenteeProfile.find({ user: { $in: userIds } }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-    MenteeProfile.countDocuments({ user: { $in: userIds } }),
+  const [users, total] = await Promise.all([
+    User.find(userFilter)
+      .select('_id firstName lastName email isActive createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    User.countDocuments(userFilter),
   ]);
+  const profiles = await MenteeProfile.find({ user: { $in: users.map((user) => user._id) } }).lean();
+  const profilesByUser = new Map(profiles.map((profile) => [String(profile.user), profile]));
 
-  const profileUserIds = new Set(profiles.map((p) => String(p.user)));
-  // include mentees without profiles if searching broadly
-  const items = profiles.map((p) => {
-    const u = userMap.get(String(p.user));
+  const items = users.map((user) => {
+    const profile = profilesByUser.get(String(user._id));
     return {
-      user: u ? { id: u._id, firstName: u.firstName, lastName: u.lastName, email: u.email, isActive: u.isActive, createdAt: u.createdAt } : null,
-      profile: {
-        careerStage: p.careerStage,
-        fieldOfStudy: p.fieldOfStudy,
-        skills: p.skills || [],
-        industries: p.industries || [],
-        interests: p.interests || [],
-        careerGoals: p.careerGoals || [],
-        mentorshipGoals: p.mentorshipGoals || [],
-        preferredMentorExpertise: p.preferredMentorExpertise || [],
-        preferredIndustry: p.preferredIndustry || [],
-        preferredMentorshipStyle: p.preferredMentorshipStyle || [],
-        availability: p.availability || {},
-        profileCompletion: calcCompletion(p, menteeCompletionFields),
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
       },
+      profile: profile ? {
+        careerStage: profile.careerStage,
+        fieldOfStudy: profile.fieldOfStudy,
+        skills: profile.skills || [],
+        industries: profile.industries || [],
+        interests: profile.interests || [],
+        careerGoals: profile.careerGoals || [],
+        mentorshipGoals: profile.mentorshipGoals || [],
+        preferredMentorExpertise: profile.preferredMentorExpertise || [],
+        preferredIndustry: profile.preferredIndustry || [],
+        preferredMentorshipStyle: profile.preferredMentorshipStyle || [],
+        availability: profile.availability || {},
+        profileCompletion: calcCompletion(profile, menteeCompletionFields),
+      } : null,
     };
   });
-
-  // add users without profiles (fallback) - only on first page to keep simple
-  if (page === 1) {
-    for (const u of matchingUsers) {
-      if (!profileUserIds.has(String(u._id)) && items.length < limit) {
-        items.push({
-          user: { id: u._id, firstName: u.firstName, lastName: u.lastName, email: u.email, isActive: u.isActive, createdAt: u.createdAt },
-          profile: null,
-        });
-      }
-    }
-  }
 
   return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 } };
 }
@@ -733,6 +740,8 @@ export async function listRelationships(query) {
     mentee: toSafeUserBrief(r.mentee),
     mentor: toSafeUserBrief(r.mentor),
     status: r.status,
+    adminApprovalStatus: r.adminApprovalStatus || 'NOT_REQUIRED',
+    adminReviewedAt: r.adminReviewedAt,
     requestMessage: r.requestMessage || '',
     createdAt: r.createdAt,
     acceptedAt: r.respondedAt && ['ACCEPTED','ACTIVE','COMPLETED','ARCHIVED'].includes(r.status) ? r.respondedAt : undefined,
@@ -756,6 +765,8 @@ export async function getRelationshipById(id) {
     mentee: toSafeUserBrief(r.mentee),
     mentor: toSafeUserBrief(r.mentor),
     status: r.status,
+    adminApprovalStatus: r.adminApprovalStatus || 'NOT_REQUIRED',
+    adminReviewedAt: r.adminReviewedAt,
     requestMessage: r.requestMessage || '',
     createdAt: r.createdAt,
     acceptedAt: r.respondedAt && ['ACCEPTED','ACTIVE','COMPLETED','ARCHIVED'].includes(r.status) ? r.respondedAt : undefined,
@@ -763,6 +774,51 @@ export async function getRelationshipById(id) {
     completedAt: r.completedAt,
     archivedAt: r.archivedAt,
   };
+}
+
+async function reviewRelationship(actorId, relationshipId, approved) {
+  requireValidObjectId(relationshipId, 'relationship ID');
+
+  const relationship = await MentorshipRelationship.findOneAndUpdate(
+    {
+      _id: relationshipId,
+      status: 'PENDING',
+      adminApprovalStatus: 'PENDING',
+    },
+    {
+      $set: {
+        adminApprovalStatus: approved ? 'APPROVED' : 'REJECTED',
+        adminReviewedBy: actorId,
+        adminReviewedAt: new Date(),
+        ...(approved ? {} : { status: 'DECLINED', respondedAt: new Date() }),
+      },
+    },
+    { new: true, runValidators: true },
+  );
+
+  if (!relationship) {
+    const existing = await MentorshipRelationship.findById(relationshipId).select('_id').lean();
+    if (!existing) throw new ApiError(404, 'Mentorship relationship not found.');
+    throw new ApiError(409, 'This relationship is not awaiting administrator approval.');
+  }
+
+  await logAdminAction({
+    actor: actorId,
+    action: approved ? 'RELATIONSHIP_ADMIN_APPROVED' : 'RELATIONSHIP_ADMIN_REJECTED',
+    entityType: 'MENTORSHIP_RELATIONSHIP',
+    entityId: relationship._id,
+    metadata: { adminApprovalStatus: approved ? 'APPROVED' : 'REJECTED' },
+  });
+
+  return getRelationshipById(relationshipId);
+}
+
+export async function approveRelationship(actorId, relationshipId) {
+  return reviewRelationship(actorId, relationshipId, true);
+}
+
+export async function rejectRelationship(actorId, relationshipId) {
+  return reviewRelationship(actorId, relationshipId, false);
 }
 
 export async function getMatchesForMenteeAdmin(menteeId) {

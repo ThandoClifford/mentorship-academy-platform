@@ -1,11 +1,18 @@
 import { Router } from 'express';
 import MentorProfile from '../models/MentorProfile.js';
 import User from '../models/User.js';
+import ApiError from '../utils/ApiError.js';
+import { getAcademySettings } from '../services/academySettingsService.js';
 import asyncHandler from '../utils/asyncHandler.js';
 
 const router = Router();
 
 router.get('/approved', asyncHandler(async (request, response) => {
+  const settings = await getAcademySettings();
+  if (!settings.publicMentorProfilesEnabled) {
+    throw new ApiError(403, 'Public mentor profiles are currently disabled.');
+  }
+
   const mentorProfiles = await MentorProfile.find({ status: 'APPROVED' })
     .select('-availability')
     .lean();

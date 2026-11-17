@@ -112,11 +112,14 @@ export default function MenteeMatchPage() {
     setRequestError('');
 
     try {
-      await mentorshipService.createMentorshipRequest({
+      const result = await mentorshipService.createMentorshipRequest({
         mentorId: requestingMentorId,
         requestMessage: requestMessage.trim(),
       });
-      setRequestSuccess(requestingMentorId);
+      setRequestSuccess({
+        mentorId: requestingMentorId,
+        adminReviewRequired: result.relationship?.adminApprovalStatus === 'PENDING',
+      });
       setMatches((prev) =>
         prev.map((match) =>
           match.mentorId === requestingMentorId
@@ -224,7 +227,9 @@ export default function MenteeMatchPage() {
       )}
       {requestSuccess && (
         <p className="mentorship-message mentorship-success" role="status">
-          Mentorship request sent! The mentor will review your request.
+          {requestSuccess.adminReviewRequired
+            ? 'Mentorship request sent. An Academy administrator must approve it before the mentor can review it.'
+            : 'Mentorship request sent! The mentor will review your request.'}
         </p>
       )}
 

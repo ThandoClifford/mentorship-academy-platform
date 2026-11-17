@@ -23,9 +23,8 @@ export default function GuestOnlyRoute({ children }) {
     if (user.role === 'MENTEE' && location.state?.journey === 'mentor') {
       return (
         <Navigate
-          to="/"
+          to="/mentor/register"
           replace
-          state={{ journeyAction: 'mentor-application' }}
         />
       );
     }

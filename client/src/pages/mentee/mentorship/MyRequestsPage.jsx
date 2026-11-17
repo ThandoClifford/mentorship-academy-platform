@@ -78,7 +78,9 @@ function RequestCard({ request }) {
       <div className="request-actions">
         {status === 'PENDING' && (
           <span className="request-pending-note">
-            Awaiting mentor response…
+            {request.adminApprovalStatus === 'PENDING'
+              ? 'Awaiting administrator approval before the mentor can review your request…'
+              : 'Awaiting mentor response…'}
           </span>
         )}
         {status === 'ACCEPTED' && (

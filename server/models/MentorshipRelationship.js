@@ -50,6 +50,21 @@ const mentorshipRelationshipSchema = new mongoose.Schema(
       default: 'PENDING',
       required: true,
     },
+    adminApprovalStatus: {
+      type: String,
+      enum: ['NOT_REQUIRED', 'PENDING', 'APPROVED', 'REJECTED'],
+      default: 'NOT_REQUIRED',
+      required: true,
+    },
+    adminReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    adminReviewedAt: {
+      type: Date,
+      default: null,
+    },
     requestedAt: {
       type: Date,
       default: Date.now,

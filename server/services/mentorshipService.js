@@ -6,6 +6,7 @@ import MentorshipRelationship, {
 } from '../models/MentorshipRelationship.js';
 import ApiError from '../utils/ApiError.js';
 import { createNotification, createNotificationsForRecipients } from './notificationService.js';
+import { getAcademySettings } from './academySettingsService.js';
 
 function toSafeUser(user) {
   return {
@@ -25,6 +26,8 @@ function toSafeRelationship(rel) {
     requestedBy: rel.requestedBy ? toSafeUser(rel.requestedBy) : null,
     requestMessage: rel.requestMessage,
     status: rel.status,
+    adminApprovalStatus: rel.adminApprovalStatus || 'NOT_REQUIRED',
+    adminReviewedAt: rel.adminReviewedAt,
     requestedAt: rel.requestedAt,
     respondedAt: rel.respondedAt,
     startedAt: rel.startedAt,
@@ -57,6 +60,11 @@ function validateUserRole(user, expectedRole, action) {
 }
 
 export async function createMentorshipRequest(menteeId, mentorId, requestMessage) {
+  const settings = await getAcademySettings();
+  if (!settings.allowMenteeMentorRequests) {
+    throw new ApiError(403, 'Mentee mentor requests are currently disabled.');
+  }
+
   const statusMessages = {
     PENDING: 'You already have a pending request with this mentor.',
     ACCEPTED: 'You already have an accepted request with this mentor.',
@@ -103,6 +111,7 @@ export async function createMentorshipRequest(menteeId, mentorId, requestMessage
       requestedBy: menteeId,
       requestMessage: requestMessage?.trim() || '',
       status: 'PENDING',
+      adminApprovalStatus: settings.requireAdminApprovalForRelationships ? 'PENDING' : 'NOT_REQUIRED',
       requestedAt: new Date(),
     });
   } catch (error) {
@@ -168,6 +177,10 @@ export async function getMentorRequests(mentorId) {
   const relationships = await MentorshipRelationship.find({
     mentor: mentorId,
     status: 'PENDING',
+    $or: [
+      { adminApprovalStatus: { $in: ['NOT_REQUIRED', 'APPROVED'] } },
+      { adminApprovalStatus: { $exists: false } },
+    ],
   })
     .sort({ createdAt: -1 })
     .populate([
@@ -232,6 +245,18 @@ export async function acceptMentorshipRequest(mentorId, relationshipId) {
 
   if (relationship.status !== 'PENDING') {
     throw new ApiError(400, `Cannot accept a request with status ${relationship.status}.`);
+  }
+  if (relationship.adminApprovalStatus === 'PENDING') {
+    throw new ApiError(409, 'This mentorship request is awaiting administrator approval.');
+  }
+
+  const settings = await getAcademySettings();
+  const menteeCount = await MentorshipRelationship.countDocuments({
+    mentor: mentorId,
+    status: { $in: ['ACCEPTED', 'ACTIVE'] },
+  });
+  if (menteeCount >= settings.maxMenteesPerMentor) {
+    throw new ApiError(409, 'This mentor has reached the maximum number of accepted or active mentees.');
   }
 
   validateStatusTransition(relationship.status, 'ACCEPTED');
@@ -318,6 +343,9 @@ export async function activateMentorship(mentorId, relationshipId) {
 
   if (relationship.status !== 'ACCEPTED') {
     throw new ApiError(400, `Cannot activate a relationship with status ${relationship.status}.`);
+  }
+  if (relationship.adminApprovalStatus === 'PENDING' || relationship.adminApprovalStatus === 'REJECTED') {
+    throw new ApiError(409, 'This mentorship relationship is awaiting administrator approval.');
   }
 
   validateStatusTransition(relationship.status, 'ACTIVE');
