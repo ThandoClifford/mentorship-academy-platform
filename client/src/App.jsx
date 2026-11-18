@@ -36,6 +36,7 @@ import AdminRelationshipsPage from './pages/admin/AdminRelationshipsPage.jsx';
 import AdminAuditPage from './pages/admin/AdminAuditPage.jsx';
 import AdminMatchesPage from './pages/admin/AdminMatchesPage.jsx';
 import AdminCohortsPage from './pages/admin/AdminCohortsPage.jsx';
+import AdminCohortMatchingPage from './pages/admin/AdminCohortMatchingPage.jsx';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage.jsx';
 import AdminResourcesPage from './pages/admin/AdminResourcesPage.jsx';
 import AdminContentPage from './pages/admin/AdminContentPage.jsx';
@@ -183,6 +184,8 @@ export default function App() {
                   <AdminMenteesPage />
                 ) : page.path === 'cohorts' && workspace.role === 'Admin' ? (
                   <AdminCohortsPage />
+                ) : page.path === 'cohorts/:cohortId/matching' && workspace.role === 'Admin' ? (
+                  <AdminCohortMatchingPage />
                 ) : page.path === 'feedback' && workspace.role === 'Admin' ? (
                   <AdminFeedbackPage />
                 ) : page.path === 'notifications' && workspace.role === 'Admin' ? (

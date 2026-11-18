@@ -359,7 +359,12 @@ export const workspaceRoutes = [
           { path: 'mentor-applications', label: 'Mentor Applications', icon: 'applications' },
           { path: 'mentors', label: 'Mentors', icon: 'mentor' },
           { path: 'mentees', label: 'Mentees', icon: 'profile' },
-          { path: 'cohorts', label: 'Cohorts', icon: 'users' },
+          {
+            path: 'cohorts',
+            label: 'Cohorts',
+            icon: 'users',
+            activePaths: ['cohorts', 'cohorts/:cohortId/matching'],
+          },
           { path: 'matches', label: 'AI Matches', icon: 'search' },
           { path: 'relationships', label: 'Relationships', icon: 'relationships' },
           { path: 'content', label: 'Content', icon: 'content' },
@@ -404,6 +409,11 @@ export const workspaceRoutes = [
         path: 'cohorts',
         title: 'Cohorts',
         description: 'Manage mentorship programme cohorts and their participant rosters.',
+      },
+      {
+        path: 'cohorts/:cohortId/matching',
+        title: 'Cohort Matching Review',
+        description: 'Review cohort-wide mentor recommendations and approved pairings.',
       },
       {
         path: 'matches',

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import * as adminService from '../../services/adminService.js';
 import * as cohortService from '../../services/cohortService.js';
 import {
@@ -293,11 +294,20 @@ export default function AdminCohortsPage() {
               <div><h2>{selectedCohort ? (editing ? 'Edit cohort' : 'Cohort details') : 'Create cohort'}</h2>
                 {selectedCohort && <p>{memberCounts.mentees} mentees · {memberCounts.mentors} mentors</p>}
               </div>
-              {selectedCohort && editable && !editing && (
-                <button className="button button-secondary" type="button" onClick={() => setEditing(true)}>Edit details</button>
-              )}
-              {selectedCohort && editing && (
-                <button className="admin-text-button" type="button" onClick={() => { setEditing(false); loadSelected(selectedId); }}>Cancel edit</button>
+              {selectedCohort && (
+                <div className="admin-page-actions">
+                  {selectedCohort.status !== 'DRAFT' && (
+                    <Link className="button button-secondary" to={`/admin/cohorts/${selectedCohort.id}/matching`}>
+                      Review Matching
+                    </Link>
+                  )}
+                  {editable && !editing && (
+                    <button className="button button-secondary" type="button" onClick={() => setEditing(true)}>Edit details</button>
+                  )}
+                  {editing && (
+                    <button className="admin-text-button" type="button" onClick={() => { setEditing(false); loadSelected(selectedId); }}>Cancel edit</button>
+                  )}
+                </div>
               )}
             </div>
             {(!selectedCohort || editing) ? (
