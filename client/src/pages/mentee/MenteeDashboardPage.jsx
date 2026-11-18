@@ -7,6 +7,7 @@ import * as messageService from '../../services/messageService.js';
 import * as mentorshipService from '../../services/mentorshipService.js';
 import * as notificationService from '../../services/notificationService.js';
 import * as profileService from '../../services/profileService.js';
+import CohortSummary from '../../components/cohort/CohortSummary.jsx';
 import './MenteeDashboardPage.css';
 
 const EMPTY_SECTION = { loading: true, error: '', data: null };
@@ -410,6 +411,7 @@ export default function MenteeDashboardPage() {
       </header>
 
       <div className="mentee-dashboard-top-grid">
+        <CohortSummary />
         <article className="mentee-dashboard-card mentee-profile-card">
           <SectionHeading eyebrow="A better introduction" title="Complete your profile" to="/mentee/profile" linkLabel="Complete profile" />
           {profile.loading ? (

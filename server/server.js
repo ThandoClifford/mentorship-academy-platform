@@ -25,6 +25,7 @@ import reflectionRoutes, {
 } from './routes/reflectionRoutes.js';
 import contentRoutes, { adminRouter as adminContentRouter } from './routes/contentRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import cohortRoutes from './routes/cohortRoutes.js';
 import platformRoutes from './routes/platformRoutes.js';
 import maintenanceGuard from './middleware/maintenanceGuard.js';
 
@@ -59,6 +60,7 @@ app.use('/api/mentor/mentorship/:relationshipId/reflections', mentorReflectionRo
 app.use('/api/admin/reflections', adminReflectionRouter);
 app.use('/api/content', contentRoutes);
 app.use('/api/admin/content', adminContentRouter);
+app.use('/api', cohortRoutes);
 app.use('/api/admin', adminRoutes);
 app.use((request, response) => {
   response.status(404).json({ message: 'Route not found.' });

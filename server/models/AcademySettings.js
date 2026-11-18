@@ -46,6 +46,7 @@ const academySettingsSchema = new mongoose.Schema(
     requireAdminApprovalForMentors: { type: Boolean, default: true },
     allowMenteeMentorRequests: { type: Boolean, default: true },
     requireAdminApprovalForRelationships: { type: Boolean, default: false },
+    cohortManagementEnabled: { type: Boolean, default: false },
     aiMatchmakingEnabled: { type: Boolean, default: true },
     minimumMatchScore: { type: Number, min: 0, max: 100, default: 0 },
     maximumSuggestedMentors: { type: Number, min: 1, max: 100, default: 50 },

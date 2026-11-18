@@ -17,6 +17,7 @@ export const DEFAULT_ACADEMY_SETTINGS = Object.freeze({
   requireAdminApprovalForMentors: true,
   allowMenteeMentorRequests: true,
   requireAdminApprovalForRelationships: false,
+  cohortManagementEnabled: false,
   aiMatchmakingEnabled: true,
   minimumMatchScore: 0,
   maximumSuggestedMentors: 50,
@@ -32,6 +33,7 @@ const booleanFields = [
   'requireAdminApprovalForMentors',
   'allowMenteeMentorRequests',
   'requireAdminApprovalForRelationships',
+  'cohortManagementEnabled',
   'aiMatchmakingEnabled',
   'publicMentorProfilesEnabled',
   'publicEventsEnabled',
@@ -50,7 +52,10 @@ const stringLimits = {
 };
 
 function toSafeSettings(settings) {
-  return Object.fromEntries(settingFields.map((field) => [field, settings[field]]));
+  return Object.fromEntries(settingFields.map((field) => [
+    field,
+    field === 'cohortManagementEnabled' ? Boolean(settings[field]) : settings[field],
+  ]));
 }
 
 function validateSettingsPayload(payload) {
@@ -143,6 +148,9 @@ export async function updateAcademySettings(payload, { replace = false, actor } 
   const current = await getAcademySettings();
 
   if (replace) {
+    if (!('cohortManagementEnabled' in validated)) {
+      validated.cohortManagementEnabled = false;
+    }
     const missingFields = settingFields.filter((field) => !(field in validated));
     if (missingFields.length) {
       throw new ApiError(400, 'All settings fields are required for replacement.', {

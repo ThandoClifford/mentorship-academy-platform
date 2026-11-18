@@ -1,0 +1,36 @@
+.cohort-summary {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border-color, #dce3e8);
+  border-radius: 1rem;
+  background: var(--surface-color, #fff);
+}
+
+.cohort-summary h2 {
+  margin: 0.2rem 0 0;
+  font-size: 1.1rem;
+}
+
+.cohort-summary p {
+  margin: 0;
+}
+
+.cohort-summary-details {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.cohort-summary-details span,
+.cohort-summary-error {
+  color: var(--muted-color, #58636d);
+}
+
+.cohort-summary-error button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

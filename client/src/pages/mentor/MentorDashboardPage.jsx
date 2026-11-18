@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import * as goalService from '../../services/goalService.js';
 import * as messageService from '../../services/messageService.js';
 import * as mentorshipService from '../../services/mentorshipService.js';
+import CohortSummary from '../../components/cohort/CohortSummary.jsx';
 import './MentorDashboardPage.css';
 
 const EMPTY_DASHBOARD = {
@@ -242,6 +243,7 @@ export default function MentorDashboardPage() {
       {actionNotice && <p className="mentor-dashboard-notice" role="status">{actionNotice}</p>}
 
       <div className="mentor-dashboard-grid">
+        <CohortSummary />
         <DashboardSection
           className="mentor-dashboard-relationships"
           eyebrow="Your connections"

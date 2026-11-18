@@ -32,6 +32,24 @@ const mentorshipRelationshipSchema = new mongoose.Schema(
       required: true,
       immutable: true,
     },
+    cohort: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Cohort',
+      default: null,
+      immutable: true,
+    },
+    menteeMembership: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CohortMembership',
+      default: null,
+      immutable: true,
+    },
+    mentorMembership: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CohortMembership',
+      default: null,
+      immutable: true,
+    },
     requestedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

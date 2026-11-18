@@ -14,6 +14,7 @@ const toggles = [
   ['requireAdminApprovalForMentors', 'Require administrator approval for mentor applications'],
   ['allowMenteeMentorRequests', 'Allow mentees to request mentors'],
   ['requireAdminApprovalForRelationships', 'Require administrator approval for mentorship requests'],
+  ['cohortManagementEnabled', 'Enable cohort management'],
   ['aiMatchmakingEnabled', 'Enable AI matchmaking'],
   ['publicMentorProfilesEnabled', 'Show approved mentors on the public mentor directory'],
   ['publicEventsEnabled', 'Enable public events'],
