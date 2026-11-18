@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import mongoose from 'mongoose';
 import Cohort from '../models/Cohort.js';
 import CohortMembership from '../models/CohortMembership.js';
-import MatchRecommendation from '../models/MatchRecommendation.js';
 import MentorProfile from '../models/MentorProfile.js';
 import MenteeProfile from '../models/MenteeProfile.js';
 import User, { USER_ROLES } from '../models/User.js';
@@ -10,10 +9,9 @@ import ApiError from '../utils/ApiError.js';
 import { logAdminAction } from './auditService.js';
 import { getAcademySettings } from './academySettingsService.js';
 import { scoreMenteeMentorProfiles } from './matchingService.js';
-import {
-  createRecommendation,
-  getMentorCapacityPairs,
-} from './matchRecommendationService.js';
+import { createRecommendation } from './matchRecommendationService.js';
+import { getMentorCapacityPairs } from './mentorCapacityService.js';
+import { getCohortPairingMenteeMembershipIds } from './cohortPairingService.js';
 
 const GENERATION_COHORT_STATUSES = ['ENROLLING', 'ACTIVE'];
 const ELIGIBLE_MEMBERSHIP_STATUSES = ['ENROLLED', 'ACTIVE'];
@@ -146,14 +144,6 @@ async function requireActiveAdmin(adminUserId) {
   return admin;
 }
 
-async function getFixedMenteeMembershipIds(cohortId) {
-  const approvedRecommendations = await MatchRecommendation.find({
-    cohort: cohortId,
-    reviewStatus: 'APPROVED',
-  }).select('menteeMembership').lean();
-  return new Set(approvedRecommendations.map(({ menteeMembership }) => String(menteeMembership)));
-}
-
 export async function generateRecommendationsForCohort(cohortId, adminUserId) {
   await requireActiveAdmin(adminUserId);
   if (!mongoose.isValidObjectId(cohortId)) throw new ApiError(400, 'Invalid cohort ID.');
@@ -218,7 +208,7 @@ export async function generateRecommendationsForCohort(cohortId, adminUserId) {
     }));
 
   const [fixedMenteeMembershipIds, capacityUsage] = await Promise.all([
-    getFixedMenteeMembershipIds(cohort._id),
+    getCohortPairingMenteeMembershipIds(cohort._id),
     getMentorCapacityPairs(eligibleMentors.map(({ membership }) => membership.user._id)),
   ]);
   const maxMenteesPerMentor = settings.maxMenteesPerMentor;

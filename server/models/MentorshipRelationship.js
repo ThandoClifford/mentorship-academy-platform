@@ -36,19 +36,21 @@ const mentorshipRelationshipSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Cohort',
       default: null,
-      immutable: true,
     },
     menteeMembership: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'CohortMembership',
       default: null,
-      immutable: true,
     },
     mentorMembership: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'CohortMembership',
       default: null,
-      immutable: true,
+    },
+    matchRecommendation: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'MatchRecommendation',
+      default: null,
     },
     requestedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -110,6 +112,39 @@ mentorshipRelationshipSchema.index(
     name: 'unique_live_mentorship_pair',
     unique: true,
     partialFilterExpression: {
+      status: { $in: ['PENDING', 'ACCEPTED', 'ACTIVE'] },
+    },
+  },
+);
+mentorshipRelationshipSchema.index(
+  { cohort: 1, mentee: 1 },
+  {
+    name: 'unique_live_cohort_pairing_per_mentee',
+    unique: true,
+    partialFilterExpression: {
+      cohort: { $type: 'objectId' },
+      status: { $in: ['PENDING', 'ACCEPTED', 'ACTIVE'] },
+    },
+  },
+);
+mentorshipRelationshipSchema.index(
+  { cohort: 1, mentee: 1, mentor: 1 },
+  {
+    name: 'unique_live_cohort_mentorship_pair',
+    unique: true,
+    partialFilterExpression: {
+      cohort: { $type: 'objectId' },
+      status: { $in: ['PENDING', 'ACCEPTED', 'ACTIVE'] },
+    },
+  },
+);
+mentorshipRelationshipSchema.index(
+  { matchRecommendation: 1 },
+  {
+    name: 'unique_live_cohort_pairing_recommendation',
+    unique: true,
+    partialFilterExpression: {
+      matchRecommendation: { $type: 'objectId' },
       status: { $in: ['PENDING', 'ACCEPTED', 'ACTIVE'] },
     },
   },

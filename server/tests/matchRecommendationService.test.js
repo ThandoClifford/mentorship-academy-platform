@@ -8,6 +8,7 @@ import AuditLog from '../models/AuditLog.js';
 import Cohort from '../models/Cohort.js';
 import CohortMembership from '../models/CohortMembership.js';
 import MatchRecommendation from '../models/MatchRecommendation.js';
+import MentorProfile from '../models/MentorProfile.js';
 import MentorshipRelationship from '../models/MentorshipRelationship.js';
 import User, { USER_ROLES } from '../models/User.js';
 import {
@@ -16,6 +17,10 @@ import {
   createRecommendation,
   rejectRecommendation,
 } from '../services/matchRecommendationService.js';
+import {
+  acceptMentorshipRequest,
+  createMentorshipRequest,
+} from '../services/mentorshipService.js';
 
 let connected = false;
 let fixture;
@@ -60,6 +65,12 @@ function recommendationPayload(menteeMembership, mentorMembership, matchingRun) 
   };
 }
 
+async function createCohortMentee(key = 'pairing-mentee') {
+  const user = await createUser(key, USER_ROLES.MENTEE);
+  const membership = await createMembership(fixture.cohort, user, 'MENTEE', fixture.admin);
+  return { user, membership };
+}
+
 before(async () => {
   if (!process.env.MONGO_URI) throw new Error('MONGO_URI must be configured for recommendation tests.');
   const uri = new URL(process.env.MONGO_URI);
@@ -80,6 +91,7 @@ before(async () => {
     Cohort.init(),
     CohortMembership.init(),
     MatchRecommendation.init(),
+    MentorProfile.init(),
     MentorshipRelationship.init(),
     User.init(),
   ]);
@@ -97,6 +109,7 @@ before(async () => {
   const cohort = await Cohort.create({
     name: 'Recommendation test cohort',
     code: 'recommendation-test-cohort',
+    status: 'ACTIVE',
     startsAt: new Date(Date.now() - 60_000),
     endsAt: new Date(Date.now() + 86_400_000),
     createdBy: admin._id,
@@ -105,12 +118,20 @@ before(async () => {
   const otherCohort = await Cohort.create({
     name: 'Other recommendation test cohort',
     code: 'other-recommendation-test-cohort',
+    status: 'ACTIVE',
     startsAt: new Date(Date.now() - 60_000),
     endsAt: new Date(Date.now() + 86_400_000),
     createdBy: admin._id,
     updatedBy: admin._id,
   });
-  await AcademySettings.create({ key: 'academy', maxMenteesPerMentor: 10 });
+  await AcademySettings.create({
+    key: 'academy',
+    maxMenteesPerMentor: 10,
+    cohortManagementEnabled: true,
+  });
+  await Promise.all([mentorOne, mentorTwo, mentorThree].map((mentor) => (
+    MentorProfile.create({ user: mentor._id, status: 'APPROVED' })
+  )));
   const [
     menteeOneMembership,
     menteeTwoMembership,
@@ -233,11 +254,195 @@ test('approves a recommendation, audits the transition, and blocks an approved d
     approveRecommendation(fixture.admin._id, fixture.cohort._id, competingRecommendation.id),
     assertApiErrorStatus(409),
   );
+  assert.equal(
+    await MentorshipRelationship.countDocuments({
+      cohort: fixture.cohort._id,
+      mentee: fixture.menteeOneMembership.user,
+      status: 'ACTIVE',
+    }),
+    1,
+  );
+  assert.equal(
+    await AuditLog.countDocuments({
+      entityId: competingRecommendation.id,
+      action: 'COHORT_PAIRING_APPROVAL_REJECTED',
+    }),
+    1,
+  );
   await assert.rejects(
     createRecommendation(
       recommendationPayload(fixture.menteeOneMembership, fixture.mentorTwoMembership, 'approved-duplicate-run'),
     ),
     assertApiErrorStatus(409),
+  );
+});
+
+test('approval creates an active cohort relationship linked to the recommendation', async () => {
+  const { user, membership } = await createCohortMentee('pairing-create');
+  const recommendation = await createRecommendation(
+    recommendationPayload(membership, fixture.mentorOneMembership, 'pairing-create-run'),
+  );
+  const approved = await approveRecommendation(fixture.admin._id, fixture.cohort._id, recommendation.id);
+  const relationship = await MentorshipRelationship.findOne({
+    matchRecommendation: recommendation.id,
+  }).lean();
+
+  assert.equal(approved.reviewStatus, 'APPROVED');
+  assert.equal(approved.relationship.id, String(relationship._id));
+  assert.equal(relationship.status, 'ACTIVE');
+  assert.equal(String(relationship.cohort), String(fixture.cohort._id));
+  assert.equal(String(relationship.mentee), String(user._id));
+  assert.equal(String(relationship.mentor), String(fixture.mentorOneMembership.user));
+  assert.equal(String(relationship.menteeMembership), String(membership._id));
+  assert.equal(String(relationship.mentorMembership), String(fixture.mentorOneMembership._id));
+  assert.equal(String(relationship.matchRecommendation), recommendation.id);
+  assert.equal(relationship.adminApprovalStatus, 'NOT_REQUIRED');
+  assert.equal(
+    await MentorshipRelationship.countDocuments({
+      cohort: fixture.cohort._id,
+      mentee: user._id,
+      status: 'ACTIVE',
+    }),
+    1,
+  );
+  assert.equal(
+    await AuditLog.countDocuments({
+      entityId: relationship._id,
+      action: 'COHORT_PAIRING_CREATED',
+    }),
+    1,
+  );
+});
+
+test('approving the same recommendation twice returns its existing relationship', async () => {
+  const { membership } = await createCohortMentee('pairing-idempotent');
+  const recommendation = await createRecommendation(
+    recommendationPayload(membership, fixture.mentorOneMembership, 'pairing-idempotent-run'),
+  );
+  const first = await approveRecommendation(fixture.admin._id, fixture.cohort._id, recommendation.id);
+  const second = await approveRecommendation(fixture.admin._id, fixture.cohort._id, recommendation.id);
+
+  assert.equal(first.relationship.id, second.relationship.id);
+  assert.equal(second.idempotent, true);
+  assert.equal(
+    await MentorshipRelationship.countDocuments({ matchRecommendation: recommendation.id }),
+    1,
+  );
+  assert.equal(
+    await AuditLog.countDocuments({
+      entityId: recommendation.id,
+      action: 'COHORT_PAIRING_APPROVAL_IDEMPOTENT',
+    }),
+    1,
+  );
+});
+
+test('non-cohort mentorship requests remain available without a fixed cohort pairing', async () => {
+  const relationship = await createMentorshipRequest(
+    fixture.otherMenteeMembership.user,
+    fixture.otherMentorMembership.user,
+    'Non-cohort request remains supported.',
+  );
+  const persisted = await MentorshipRelationship.findById(relationship.id).lean();
+  assert.equal(persisted.status, 'PENDING');
+  assert.equal(persisted.cohort, null);
+});
+
+test('mentees and mentors cannot change an active cohort assignment through requests', async () => {
+  const { user, membership } = await createCohortMentee('pairing-request-guard');
+  const pendingRequest = await createMentorshipRequest(
+    user._id,
+    fixture.mentorThreeMembership.user,
+    'Submitted before the cohort pairing was approved.',
+  );
+  const recommendation = await createRecommendation(
+    recommendationPayload(membership, fixture.mentorOneMembership, 'pairing-request-guard-run'),
+  );
+  await approveRecommendation(fixture.admin._id, fixture.cohort._id, recommendation.id);
+
+  await assert.rejects(
+    createMentorshipRequest(user._id, fixture.mentorTwoMembership.user, 'Try another mentor.'),
+    assertApiErrorStatus(409),
+  );
+  await assert.rejects(
+    acceptMentorshipRequest(fixture.mentorThreeMembership.user, pendingRequest.id),
+    assertApiErrorStatus(409),
+  );
+  assert.equal(
+    await MentorshipRelationship.countDocuments({ mentee: user._id, cohort: fixture.cohort._id }),
+    1,
+  );
+});
+
+test('adjusted recommendations establish or change a pairing only after reapproval', async () => {
+  const { user, membership } = await createCohortMentee('pairing-adjusted');
+  const recommendation = await createRecommendation(
+    recommendationPayload(membership, fixture.mentorOneMembership, 'pairing-adjusted-run'),
+  );
+  const adjusted = await adjustRecommendation(
+    fixture.admin._id,
+    fixture.cohort._id,
+    recommendation.id,
+    {
+      reason: 'Administrator selected a different mentor.',
+      mentorMembership: String(fixture.mentorTwoMembership._id),
+    },
+  );
+  assert.equal(adjusted.reviewStatus, 'ADJUSTED');
+  assert.equal(await MentorshipRelationship.countDocuments({ mentee: user._id }), 0);
+
+  await approveRecommendation(fixture.admin._id, fixture.cohort._id, recommendation.id);
+  const relationship = await MentorshipRelationship.findOne({
+    cohort: fixture.cohort._id,
+    mentee: user._id,
+  }).lean();
+  assert.equal(String(relationship.mentor), String(fixture.mentorTwoMembership.user));
+  assert.equal(relationship.status, 'ACTIVE');
+});
+
+test('admin adjustment and reapproval reassign an existing fixed pairing', async () => {
+  const { user, membership } = await createCohortMentee('pairing-intervention');
+  const recommendation = await createRecommendation(
+    recommendationPayload(membership, fixture.mentorOneMembership, 'pairing-intervention-run'),
+  );
+  await approveRecommendation(fixture.admin._id, fixture.cohort._id, recommendation.id);
+  const original = await MentorshipRelationship.findOne({
+    matchRecommendation: recommendation.id,
+  });
+  await adjustRecommendation(
+    fixture.admin._id,
+    fixture.cohort._id,
+    recommendation.id,
+    {
+      reason: 'Administrator intervened to reassign the mentee.',
+      mentorMembership: String(fixture.mentorTwoMembership._id),
+    },
+  );
+  assert.equal(original.status, 'ACTIVE');
+
+  await approveRecommendation(fixture.admin._id, fixture.cohort._id, recommendation.id);
+  const completedOriginal = await MentorshipRelationship.findById(original._id).lean();
+  const current = await MentorshipRelationship.findOne({
+    cohort: fixture.cohort._id,
+    mentee: user._id,
+    status: 'ACTIVE',
+  }).lean();
+  assert.equal(completedOriginal.status, 'COMPLETED');
+  assert.equal(String(current.mentor), String(fixture.mentorTwoMembership.user));
+  assert.equal(
+    await MentorshipRelationship.countDocuments({
+      cohort: fixture.cohort._id,
+      mentee: user._id,
+      status: 'ACTIVE',
+    }),
+    1,
+  );
+  assert.equal(
+    await AuditLog.countDocuments({
+      entityId: current._id,
+      action: 'COHORT_PAIRING_REASSIGNED',
+    }),
+    1,
   );
 });
 
@@ -289,6 +494,13 @@ test('allows approved mentees within capacity and blocks approvals over capacity
       approveRecommendation(fixture.admin._id, fixture.cohort._id, third.id),
       assertApiErrorStatus(409),
     );
+    assert.equal(
+      await AuditLog.countDocuments({
+        entityId: third.id,
+        action: 'COHORT_PAIRING_APPROVAL_REJECTED',
+      }),
+      1,
+    );
   } finally {
     await AcademySettings.updateOne({ key: 'academy' }, { $set: { maxMenteesPerMentor: 10 } });
   }
@@ -308,6 +520,7 @@ test('rejects with a reason, audits the transition, and does not allow approval 
   assert.equal(rejected.rejectionReason, 'The proposed pairing is not suitable.');
   const audit = await AuditLog.findOne({ entityId: recommendation.id, action: 'MATCH_RECOMMENDATION_REJECTED' }).lean();
   assert.equal(audit.metadata.reason, rejected.rejectionReason);
+  assert.equal(await MentorshipRelationship.countDocuments({ matchRecommendation: recommendation.id }), 0);
   await assert.rejects(
     approveRecommendation(fixture.admin._id, fixture.cohort._id, recommendation.id),
     assertApiErrorStatus(409),

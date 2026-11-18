@@ -7,6 +7,7 @@ import MentorshipRelationship, {
 import ApiError from '../utils/ApiError.js';
 import { createNotification, createNotificationsForRecipients } from './notificationService.js';
 import { getAcademySettings } from './academySettingsService.js';
+import { hasFixedCohortPairingForMentee } from './cohortPairingService.js';
 
 function toSafeUser(user) {
   return {
@@ -33,6 +34,14 @@ function toSafeRelationship(rel) {
     startedAt: rel.startedAt,
     completedAt: rel.completedAt,
     archivedAt: rel.archivedAt,
+    ...(rel.cohort ? {
+      cohort: String(rel.cohort._id || rel.cohort),
+      menteeMembership: rel.menteeMembership ? String(rel.menteeMembership._id || rel.menteeMembership) : null,
+      mentorMembership: rel.mentorMembership ? String(rel.mentorMembership._id || rel.mentorMembership) : null,
+      matchRecommendation: rel.matchRecommendation
+        ? String(rel.matchRecommendation._id || rel.matchRecommendation)
+        : null,
+    } : {}),
     createdAt: rel.createdAt,
     updatedAt: rel.updatedAt,
   };
@@ -92,6 +101,12 @@ export async function createMentorshipRequest(menteeId, mentorId, requestMessage
 
   validateUserRole(mentee, 'MENTEE', 'submit a mentorship request');
   validateUserRole(mentor, 'MENTOR', 'receive a mentorship request');
+  if (
+    settings.cohortManagementEnabled &&
+    await hasFixedCohortPairingForMentee(menteeId)
+  ) {
+    throw new ApiError(409, 'Your mentor for the active cohort was assigned by an administrator.');
+  }
 
   const existingPending = await MentorshipRelationship.findOne({
     mentee: menteeId,
@@ -251,6 +266,13 @@ export async function acceptMentorshipRequest(mentorId, relationshipId) {
   }
 
   const settings = await getAcademySettings();
+  if (
+    settings.cohortManagementEnabled &&
+    !relationship.cohort &&
+    await hasFixedCohortPairingForMentee(relationship.mentee)
+  ) {
+    throw new ApiError(409, 'This mentee has an administrator-assigned mentor for the active cohort.');
+  }
   const menteeCount = await MentorshipRelationship.countDocuments({
     mentor: mentorId,
     status: { $in: ['ACCEPTED', 'ACTIVE'] },
