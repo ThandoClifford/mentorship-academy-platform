@@ -4,11 +4,16 @@ import CohortMembership from '../models/CohortMembership.js';
 import MatchRecommendation, {
   MATCH_RECOMMENDATION_REVIEW_STATUSES,
 } from '../models/MatchRecommendation.js';
+import MentorshipRelationship from '../models/MentorshipRelationship.js';
 import User, { USER_ROLES } from '../models/User.js';
 import ApiError from '../utils/ApiError.js';
 import { logAdminAction } from './auditService.js';
+import { getAcademySettings } from './academySettingsService.js';
 
 const ACTIVE_MEMBERSHIP_STATUSES = ['ENROLLED', 'ACTIVE'];
+const CAPACITY_MEMBERSHIP_STATUSES = ['ENROLLED', 'ACTIVE', 'PAUSED'];
+const CAPACITY_RELATIONSHIP_STATUSES = ['ACCEPTED', 'ACTIVE'];
+const ONGOING_COHORT_STATUSES = ['ENROLLING', 'ACTIVE'];
 const REVIEWABLE_STATUSES = ['PENDING', 'ADJUSTED', 'APPROVED'];
 const REVIEW_TRANSITIONS = Object.freeze({
   PENDING: ['APPROVED', 'REJECTED', 'ADJUSTED'],
@@ -215,6 +220,56 @@ async function withTransactionIfSupported(work) {
   }
 }
 
+export async function getMentorCapacityPairs(mentorUserIds, session) {
+  const capacityPairs = new Map(mentorUserIds.map((id) => [String(id), new Set()]));
+  if (!mentorUserIds.length) return capacityPairs;
+
+  let relationshipQuery = MentorshipRelationship.find({
+    mentor: { $in: mentorUserIds },
+    status: { $in: CAPACITY_RELATIONSHIP_STATUSES },
+  }).select('mentor mentee').lean();
+  if (session) relationshipQuery = relationshipQuery.session(session);
+  const relationships = await relationshipQuery;
+  for (const relationship of relationships) {
+    capacityPairs.get(String(relationship.mentor))?.add(String(relationship.mentee));
+  }
+
+  let cohortQuery = Cohort.find({ status: { $in: ONGOING_COHORT_STATUSES } }).select('_id').lean();
+  if (session) cohortQuery = cohortQuery.session(session);
+  const ongoingCohorts = await cohortQuery;
+  if (!ongoingCohorts.length) return capacityPairs;
+
+  let membershipQuery = CohortMembership.find({
+    user: { $in: mentorUserIds },
+    participantRole: 'MENTOR',
+    status: { $in: CAPACITY_MEMBERSHIP_STATUSES },
+  }).select('_id').lean();
+  if (session) membershipQuery = membershipQuery.session(session);
+  const mentorMemberships = await membershipQuery;
+  if (!mentorMemberships.length) return capacityPairs;
+
+  let recommendationQuery = MatchRecommendation.find({
+    cohort: { $in: ongoingCohorts.map(({ _id }) => _id) },
+    mentorMembership: { $in: mentorMemberships.map(({ _id }) => _id) },
+    reviewStatus: 'APPROVED',
+  })
+    .populate({ path: 'mentorMembership', select: 'user' })
+    .populate({ path: 'menteeMembership', select: 'user' })
+    .lean();
+  if (session) recommendationQuery = recommendationQuery.session(session);
+  const recommendations = await recommendationQuery;
+  for (const recommendation of recommendations) {
+    const mentorUserId = recommendation.mentorMembership?.user
+      ? String(recommendation.mentorMembership.user)
+      : '';
+    const menteeUserId = recommendation.menteeMembership?.user
+      ? String(recommendation.menteeMembership.user)
+      : '';
+    if (menteeUserId) capacityPairs.get(mentorUserId)?.add(menteeUserId);
+  }
+  return capacityPairs;
+}
+
 function mapDuplicateKey(error, message) {
   if (error?.code === 11000) throw new ApiError(409, message);
   throw error;
@@ -258,12 +313,11 @@ export async function createRecommendation(payload = {}) {
       let approvedQuery = MatchRecommendation.exists({
         cohort: payload.cohort,
         menteeMembership: payload.menteeMembership,
-        mentorMembership: payload.mentorMembership,
         reviewStatus: 'APPROVED',
       });
       if (session) approvedQuery = approvedQuery.session(session);
       if (await approvedQuery) {
-        throw new ApiError(409, 'This cohort pairing already has an approved recommendation.');
+        throw new ApiError(409, 'This mentee already has an approved recommendation in the cohort.');
       }
 
       const [recommendation] = await MatchRecommendation.create([{
@@ -281,7 +335,10 @@ export async function createRecommendation(payload = {}) {
       return toRecommendation(recommendation);
     });
   } catch (error) {
-    mapDuplicateKey(error, 'A recommendation for this pairing and matching run already exists or the pairing is approved.');
+    mapDuplicateKey(
+      error,
+      'A recommendation for this pairing and matching run already exists, or this mentee already has an approved recommendation.',
+    );
   }
 }
 
@@ -422,22 +479,32 @@ async function updateRecommendationReviewStatus(actorId, cohortId, recommendatio
         throw new ApiError(409, `Cannot transition a recommendation from ${recommendation.reviewStatus} to ${nextStatus}.`);
       }
       if (nextStatus === 'APPROVED') {
-        await validateMembershipPair(
+        const { menteeMembership, mentorMembership } = await validateMembershipPair(
           cohortId,
           recommendation.menteeMembership,
           recommendation.mentorMembership,
           session,
         );
+        const mentorUserId = String(mentorMembership.user);
+        const menteeUserId = String(menteeMembership.user);
+        const [capacityPairs, settings] = await Promise.all([
+          getMentorCapacityPairs([mentorUserId], session),
+          getAcademySettings(),
+        ]);
+        const menteeIds = capacityPairs.get(mentorUserId) || new Set();
+        const projectedMenteeCount = menteeIds.size + (menteeIds.has(menteeUserId) ? 0 : 1);
+        if (projectedMenteeCount > settings.maxMenteesPerMentor) {
+          throw new ApiError(409, 'This mentor has reached the maximum number of approved or active mentees.');
+        }
         let approvedQuery = MatchRecommendation.exists({
           _id: { $ne: recommendation._id },
           cohort: cohortId,
           menteeMembership: recommendation.menteeMembership,
-          mentorMembership: recommendation.mentorMembership,
           reviewStatus: 'APPROVED',
         });
         if (session) approvedQuery = approvedQuery.session(session);
         if (await approvedQuery) {
-          throw new ApiError(409, 'This cohort pairing already has an approved recommendation.');
+          throw new ApiError(409, 'This mentee already has an approved recommendation in the cohort.');
         }
       }
       if (nextStatus === 'ADJUSTED') {
@@ -503,7 +570,7 @@ async function updateRecommendationReviewStatus(actorId, cohortId, recommendatio
       return toRecommendation(recommendation);
     });
   } catch (error) {
-    mapDuplicateKey(error, 'This cohort pairing already has an approved recommendation.');
+    mapDuplicateKey(error, 'This mentee already has an approved recommendation in the cohort.');
   }
 }
 

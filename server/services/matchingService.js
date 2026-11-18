@@ -260,6 +260,39 @@ function generateExplanations(menteeProfile, mentorProfile, scores) {
   return explanations;
 }
 
+export function scoreMenteeMentorProfiles(menteeProfile, mentorProfile) {
+  const expertiseScore = calculateExpertiseScore(menteeProfile, mentorProfile);
+  const goalsScore = calculateGoalsScore(menteeProfile, mentorProfile);
+  const industryScore = calculateIndustryScore(menteeProfile, mentorProfile);
+  const experienceScore = calculateExperienceScore(menteeProfile, mentorProfile);
+  const interestsScore = calculateInterestsScore(menteeProfile, mentorProfile);
+  const availabilityScore = calculateAvailabilityScore(menteeProfile, mentorProfile);
+
+  const scoreBreakdown = {
+    expertise: expertiseScore,
+    goals: goalsScore,
+    industry: industryScore,
+    experience: experienceScore,
+    interests: interestsScore,
+    availability: availabilityScore,
+  };
+
+  const compatibilityScore = Math.round(
+    expertiseScore * WEIGHTS.expertise +
+    goalsScore * WEIGHTS.goals +
+    industryScore * WEIGHTS.industry +
+    experienceScore * WEIGHTS.experience +
+    interestsScore * WEIGHTS.interests +
+    availabilityScore * WEIGHTS.availability
+  );
+
+  return {
+    compatibilityScore,
+    scoreBreakdown,
+    explanations: generateExplanations(menteeProfile, mentorProfile, scoreBreakdown),
+  };
+}
+
 export async function getMatchesForMentee(menteeId) {
   const settings = await getAcademySettings();
   if (!settings.aiMatchmakingEnabled) {
@@ -301,32 +334,11 @@ export async function getMatchesForMentee(menteeId) {
       const user = userMap.get(String(mentorProfile.user));
       if (!user) return null;
 
-      const expertiseScore = calculateExpertiseScore(menteeProfile, mentorProfile);
-      const goalsScore = calculateGoalsScore(menteeProfile, mentorProfile);
-      const industryScore = calculateIndustryScore(menteeProfile, mentorProfile);
-      const experienceScore = calculateExperienceScore(menteeProfile, mentorProfile);
-      const interestsScore = calculateInterestsScore(menteeProfile, mentorProfile);
-      const availabilityScore = calculateAvailabilityScore(menteeProfile, mentorProfile);
-
-      const scoreBreakdown = {
-        expertise: expertiseScore,
-        goals: goalsScore,
-        industry: industryScore,
-        experience: experienceScore,
-        interests: interestsScore,
-        availability: availabilityScore,
-      };
-
-      const compatibilityScore = Math.round(
-        expertiseScore * WEIGHTS.expertise +
-        goalsScore * WEIGHTS.goals +
-        industryScore * WEIGHTS.industry +
-        experienceScore * WEIGHTS.experience +
-        interestsScore * WEIGHTS.interests +
-        availabilityScore * WEIGHTS.availability
-      );
-
-      const explanations = generateExplanations(menteeProfile, mentorProfile, scoreBreakdown);
+      const {
+        compatibilityScore,
+        scoreBreakdown,
+        explanations,
+      } = scoreMenteeMentorProfiles(menteeProfile, mentorProfile);
 
       const mentorId = String(mentorProfile.user);
 

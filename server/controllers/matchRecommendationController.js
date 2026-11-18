@@ -1,4 +1,14 @@
 import * as matchRecommendationService from '../services/matchRecommendationService.js';
+import { generateRecommendationsForCohort } from '../services/cohortMatchingService.js';
+
+export async function generateCohortRecommendations(request, response) {
+  response.status(200).json({
+    generation: await generateRecommendationsForCohort(
+      request.params.cohortId,
+      request.user._id,
+    ),
+  });
+}
 
 export async function listRecommendationsForCohort(request, response) {
   response.status(200).json(

@@ -32,6 +32,7 @@ import {
 import {
   adjustRecommendation,
   approveRecommendation,
+  generateCohortRecommendations,
   getRecommendation,
   listRecommendationsForCohort,
   rejectRecommendation,
@@ -69,6 +70,10 @@ router.get('/relationships/:id', asyncHandler(getRelationship));
 
 router.get('/matches/:menteeId', asyncHandler(getMatches));
 
+router.post(
+  '/cohorts/:cohortId/recommendations/generate',
+  asyncHandler(generateCohortRecommendations),
+);
 router.get('/cohorts/:cohortId/recommendations', asyncHandler(listRecommendationsForCohort));
 router.get(
   '/cohorts/:cohortId/recommendations/:recommendationId',

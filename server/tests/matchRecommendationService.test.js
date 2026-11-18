@@ -3,10 +3,12 @@ import crypto from 'node:crypto';
 import mongoose from 'mongoose';
 import { after, before, test } from 'node:test';
 import '../config/env.js';
+import AcademySettings from '../models/AcademySettings.js';
 import AuditLog from '../models/AuditLog.js';
 import Cohort from '../models/Cohort.js';
 import CohortMembership from '../models/CohortMembership.js';
 import MatchRecommendation from '../models/MatchRecommendation.js';
+import MentorshipRelationship from '../models/MentorshipRelationship.js';
 import User, { USER_ROLES } from '../models/User.js';
 import {
   adjustRecommendation,
@@ -73,10 +75,12 @@ before(async () => {
   await mongoose.connect(uri.toString(), { serverSelectionTimeoutMS: 10000 });
   connected = true;
   await Promise.all([
+    AcademySettings.init(),
     AuditLog.init(),
     Cohort.init(),
     CohortMembership.init(),
     MatchRecommendation.init(),
+    MentorshipRelationship.init(),
     User.init(),
   ]);
 
@@ -106,6 +110,7 @@ before(async () => {
     createdBy: admin._id,
     updatedBy: admin._id,
   });
+  await AcademySettings.create({ key: 'academy', maxMenteesPerMentor: 10 });
   const [
     menteeOneMembership,
     menteeTwoMembership,
@@ -210,6 +215,9 @@ test('approves a recommendation, audits the transition, and blocks an approved d
   const recommendation = await createRecommendation(
     recommendationPayload(fixture.menteeOneMembership, fixture.mentorTwoMembership, 'approve-run'),
   );
+  const competingRecommendation = await createRecommendation(
+    recommendationPayload(fixture.menteeOneMembership, fixture.mentorThreeMembership, 'competing-approve-run'),
+  );
   const approved = await approveRecommendation(
     fixture.admin._id,
     fixture.cohort._id,
@@ -222,11 +230,68 @@ test('approves a recommendation, audits the transition, and blocks an approved d
   assert.equal(audit.metadata.newStatus, 'APPROVED');
   assert.equal(audit.metadata.cohortId, String(fixture.cohort._id));
   await assert.rejects(
+    approveRecommendation(fixture.admin._id, fixture.cohort._id, competingRecommendation.id),
+    assertApiErrorStatus(409),
+  );
+  await assert.rejects(
     createRecommendation(
       recommendationPayload(fixture.menteeOneMembership, fixture.mentorTwoMembership, 'approved-duplicate-run'),
     ),
     assertApiErrorStatus(409),
   );
+});
+
+test('allows approved mentees within capacity and blocks approvals over capacity', async () => {
+  await AcademySettings.updateOne({ key: 'academy' }, { $set: { maxMenteesPerMentor: 3 } });
+  try {
+    await Cohort.updateOne({ _id: fixture.cohort._id }, { $set: { status: 'ACTIVE' } });
+    const firstMentee = await createUser('capacity-first-mentee', USER_ROLES.MENTEE);
+    const secondMentee = await createUser('capacity-second-mentee', USER_ROLES.MENTEE);
+    const firstMenteeMembership = await createMembership(
+      fixture.cohort,
+      firstMentee,
+      'MENTEE',
+      fixture.admin,
+    );
+    const secondMenteeMembership = await createMembership(
+      fixture.cohort,
+      secondMentee,
+      'MENTEE',
+      fixture.admin,
+    );
+    await MentorshipRelationship.create({
+      mentee: fixture.removedMenteeMembership.user,
+      mentor: fixture.mentorThreeMembership.user,
+      requestedBy: fixture.removedMenteeMembership.user,
+      status: 'ACTIVE',
+    });
+
+    const first = await createRecommendation(
+      recommendationPayload(firstMenteeMembership, fixture.mentorThreeMembership, 'capacity-first'),
+    );
+    const second = await createRecommendation(
+      recommendationPayload(secondMenteeMembership, fixture.mentorThreeMembership, 'capacity-second'),
+    );
+    await approveRecommendation(fixture.admin._id, fixture.cohort._id, first.id);
+    await approveRecommendation(fixture.admin._id, fixture.cohort._id, second.id);
+
+    const thirdMentee = await createUser('capacity-third-mentee', USER_ROLES.MENTEE);
+    const thirdMenteeMembership = await createMembership(
+      fixture.cohort,
+      thirdMentee,
+      'MENTEE',
+      fixture.admin,
+    );
+    const third = await createRecommendation(
+      recommendationPayload(thirdMenteeMembership, fixture.mentorThreeMembership, 'capacity-third'),
+    );
+    await assert.rejects(
+      approveRecommendation(fixture.admin._id, fixture.cohort._id, third.id),
+      assertApiErrorStatus(409),
+    );
+  } finally {
+    await AcademySettings.updateOne({ key: 'academy' }, { $set: { maxMenteesPerMentor: 10 } });
+  }
 });
 
 test('rejects with a reason, audits the transition, and does not allow approval afterward', async () => {
@@ -280,7 +345,7 @@ test('records adjusted pairing details and adjustment history', async () => {
 
 test('prevents non-admin users from reviewing recommendations', async () => {
   const recommendation = await createRecommendation(
-    recommendationPayload(fixture.menteeOneMembership, fixture.mentorThreeMembership, 'unauthorized-run'),
+    recommendationPayload(fixture.menteeTwoMembership, fixture.mentorTwoMembership, 'unauthorized-run'),
   );
   await assert.rejects(
     approveRecommendation(fixture.reviewer._id, fixture.cohort._id, recommendation.id),

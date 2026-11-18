@@ -124,6 +124,14 @@ matchRecommendationSchema.index(
     partialFilterExpression: { reviewStatus: 'APPROVED' },
   },
 );
+matchRecommendationSchema.index(
+  { cohort: 1, menteeMembership: 1 },
+  {
+    unique: true,
+    name: 'unique_approved_cohort_mentee',
+    partialFilterExpression: { reviewStatus: 'APPROVED' },
+  },
+);
 matchRecommendationSchema.index({ cohort: 1, reviewStatus: 1, createdAt: -1 });
 
 const MatchRecommendation = mongoose.model('MatchRecommendation', matchRecommendationSchema);
