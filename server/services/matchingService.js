@@ -27,6 +27,10 @@ function normalizeArray(arr) {
   return [...new Set(arr.map((v) => String(v).trim().toLowerCase()).filter((v) => v.length > 0))];
 }
 
+function normalizeIndustryValues(values) {
+  return normalizeArray(values.filter((value) => value != null));
+}
+
 function jaccardSimilarity(arr1, arr2) {
   const set1 = new Set(normalizeArray(arr1));
   const set2 = new Set(normalizeArray(arr2));
@@ -83,13 +87,13 @@ function calculateGoalsScore(menteeProfile, mentorProfile) {
 }
 
 function calculateIndustryScore(menteeProfile, mentorProfile) {
-  const menteeIndustries = normalizeArray([
+  const menteeIndustries = normalizeIndustryValues([
     ...(menteeProfile.preferredIndustry || []),
     ...(menteeProfile.industries || []),
     menteeProfile.fieldOfStudy,
   ]);
 
-  const mentorIndustries = normalizeArray([
+  const mentorIndustries = normalizeIndustryValues([
     mentorProfile.industry,
     mentorProfile.company,
     mentorProfile.jobTitle,
@@ -187,17 +191,18 @@ function generateExplanations(menteeProfile, mentorProfile, scores) {
     explanations.push(`Strong match on ${Array.from(expertiseOverlap).slice(0, 3).join(', ')} expertise.`);
   }
 
-  const menteeIndustries = normalizeArray([
+  const menteeIndustries = normalizeIndustryValues([
     ...(menteeProfile.preferredIndustry || []),
     ...(menteeProfile.industries || []),
     menteeProfile.fieldOfStudy,
   ]);
-  const mentorIndustries = new Set(normalizeArray([
+  const mentorIndustries = normalizeIndustryValues([
     mentorProfile.industry,
     mentorProfile.company,
     mentorProfile.jobTitle,
-  ]));
-  const industryOverlap = new Set([...menteeIndustries].filter((x) => mentorIndustries.has(x)));
+  ]);
+  const mentorIndustrySet = new Set(mentorIndustries);
+  const industryOverlap = new Set([...menteeIndustries].filter((x) => mentorIndustrySet.has(x)));
   if (industryOverlap.size > 0) {
     explanations.push(`Shared industry: ${Array.from(industryOverlap).slice(0, 2).join(', ')}.`);
   } else {

@@ -29,6 +29,13 @@ import {
   replaceSettings,
   patchSettings,
 } from '../controllers/academySettingsController.js';
+import {
+  adjustRecommendation,
+  approveRecommendation,
+  getRecommendation,
+  listRecommendationsForCohort,
+  rejectRecommendation,
+} from '../controllers/matchRecommendationController.js';
 
 const router = Router();
 
@@ -61,6 +68,24 @@ router.patch('/relationships/:id/reject', asyncHandler(rejectRelationship));
 router.get('/relationships/:id', asyncHandler(getRelationship));
 
 router.get('/matches/:menteeId', asyncHandler(getMatches));
+
+router.get('/cohorts/:cohortId/recommendations', asyncHandler(listRecommendationsForCohort));
+router.get(
+  '/cohorts/:cohortId/recommendations/:recommendationId',
+  asyncHandler(getRecommendation),
+);
+router.patch(
+  '/cohorts/:cohortId/recommendations/:recommendationId/approve',
+  asyncHandler(approveRecommendation),
+);
+router.patch(
+  '/cohorts/:cohortId/recommendations/:recommendationId/reject',
+  asyncHandler(rejectRecommendation),
+);
+router.patch(
+  '/cohorts/:cohortId/recommendations/:recommendationId/adjust',
+  asyncHandler(adjustRecommendation),
+);
 
 router.post('/notifications/broadcast', asyncHandler(broadcastAdminNotifications));
 
